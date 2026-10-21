@@ -50,7 +50,9 @@ public final class RoleEditorScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal(enabled ? "Включена" : "Выключена"), b -> {
             enabled = !enabled; b.setMessage(Component.literal(enabled ? "Включена" : "Выключена"));
         }).bounds(left + 166, y + 102, 112, 22).build());
-        description = edit(left, y + 150, 340, "Описание роли", role.description);
+        int descriptionWidth = Math.min(500, width - 40);
+        int descriptionLeft = (width - descriptionWidth) / 2;
+        description = edit(descriptionLeft, y + 150, descriptionWidth, "Описание роли", role.description);
         description.setMaxLength(400);
         addRenderableWidget(Button.builder(Component.literal("Сохранить"), b -> save())
                 .bounds(left, height - 42, 104, 24).build());
@@ -85,7 +87,24 @@ public final class RoleEditorScreen extends Screen {
         int left = width / 2 - 170;
         g.drawString(font, "Название:", left, 71, 0xD0D0D0);
         g.drawString(font, "Количество:", left, 174, 0xD0D0D0);
-        g.drawString(font, "Описание:", left, 204, 0xD0D0D0);
+        g.drawString(font, "Описание:", width / 2 - Math.min(500, width - 40) / 2, 204, 0xD0D0D0);
+        String descriptionText = description == null ? role.description : description.getValue();
+        if (descriptionText == null || descriptionText.isBlank()) {
+            g.drawString(font, "Предпросмотр: описание пока пустое", width / 2 - Math.min(500, width - 40) / 2, 244, 0x909090);
+        } else {
+            int previewLeft = width / 2 - Math.min(500, width - 40) / 2;
+            int previewWidth = Math.min(500, width - 40);
+            g.drawString(font, "Предпросмотр:", previewLeft, 242, 0xA0A0A0);
+            var lines = font.split(Component.literal(descriptionText), previewWidth);
+            int previewBottom = height - 58;
+            int maxLines = Math.max(0, (previewBottom - 258) / 10);
+            for (int i = 0; i < Math.min(lines.size(), maxLines); i++) {
+                g.drawString(font, lines.get(i), previewLeft, 254 + i * 10, 0xFFFFFF);
+            }
+            if (lines.size() > maxLines && maxLines > 0) {
+                g.drawString(font, "…", previewLeft, 254 + (maxLines - 1) * 10, 0xFFFFFF);
+            }
+        }
         if (!status.isBlank()) g.drawString(font, status, left, height - 60, 0xFF8888);
         super.render(g, mouseX, mouseY, delta);
     }
