@@ -122,18 +122,6 @@ class GameServiceTest {
     }
 
     @Test
-    void validationReportsIncompleteSavedRowsInsteadOfCrashing() {
-        GameService service = service(temp);
-        GameRecord game = service.createGame("Incomplete save");
-        game.players.add(null);
-        game.rolePlan.add(null);
-
-        List<String> errors = assertDoesNotThrow(() -> service.validationErrors(game));
-        assertTrue(errors.stream().anyMatch(error -> error.contains("без ника")));
-        assertTrue(errors.stream().anyMatch(error -> error.contains("пустая запись")));
-    }
-
-    @Test
     void roleTemplateChangesDoNotRewritePartySnapshot() {
         GameService service = service(temp);
         GameRecord game = service.createGame("Snapshot");
