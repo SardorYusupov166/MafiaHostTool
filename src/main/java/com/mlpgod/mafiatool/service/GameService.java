@@ -210,8 +210,8 @@ public final class GameService {
             }
         }
         int selected = enabledRoleCount(game);
-        if (selected != game.players.size())
-            errors.add("Количество выбранных ролей (" + selected + ") должно равняться игрокам (" + game.players.size() + ")");
+        if (selected > game.players.size())
+            errors.add("Выбрано ролей с действиями (" + selected + ") больше, чем игроков (" + game.players.size() + ")");
         if (game.rolePlan == null) errors.add("У партии не сохранён список ролей");
         for (RoleSelection selection : game.rolePlan == null ? List.<RoleSelection>of() : game.rolePlan) {
             if (selection == null) {
@@ -237,6 +237,9 @@ public final class GameService {
         List<RoleSelection> pool = new ArrayList<>();
         for (RoleSelection selection : game.rolePlan) if (selection.enabled)
             for (int i = 0; i < selection.count; i++) pool.add(selection);
+        RoleDefinition peaceful = new RoleDefinition("Мирный житель", RoleTeam.TOWN, 1, false);
+        peaceful.description = "Житель города без специального действия.";
+        while (pool.size() < game.players.size()) pool.add(new RoleSelection(peaceful));
         for (int i = pool.size() - 1; i > 0; i--) Collections.swap(pool, i, random.nextInt(i + 1));
         for (int i = 0; i < game.players.size(); i++) game.players.get(i).role = copy(pool.get(i).role);
         game.rolesAssigned = true;
