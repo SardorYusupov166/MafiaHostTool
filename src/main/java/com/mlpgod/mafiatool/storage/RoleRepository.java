@@ -3,6 +3,7 @@ package com.mlpgod.mafiatool.storage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mlpgod.mafiatool.model.RoleDefinition;
+import com.mlpgod.mafiatool.model.RolePhase;
 import com.mlpgod.mafiatool.model.RoleTeam;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -16,6 +17,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.Base64;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public final class RoleRepository {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -49,7 +51,18 @@ public final class RoleRepository {
         RoleLibrary library = GSON.fromJson(reader, RoleLibrary.class);
         if (library != null && (library.schemaVersion < 1 || library.schemaVersion > 1))
             throw new IllegalStateException("Неподдерживаемая версия схемы ролей");
-        return library == null || library.roles == null ? defaults() : library.roles;
+        if (library == null || library.roles == null) return defaults();
+        library.roles.removeIf(role -> role == null);
+        for (RoleDefinition role : library.roles) {
+            if (role.id == null || role.id.isBlank()) role.id = UUID.randomUUID().toString();
+            if (role.name == null || role.name.isBlank()) role.name = "Новая роль";
+            if (role.team == null) role.team = RoleTeam.TOWN;
+            if (role.customTeam == null) role.customTeam = "";
+            if (role.description == null) role.description = "";
+            if (role.actionPhase == null) role.actionPhase = RolePhase.ANY;
+            role.count = Math.max(0, Math.min(50, role.count));
+        }
+        return library.roles.isEmpty() ? defaults() : library.roles;
     }
 
     public void save(List<RoleDefinition> roles) {
