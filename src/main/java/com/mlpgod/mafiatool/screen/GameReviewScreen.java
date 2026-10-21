@@ -133,8 +133,12 @@ public final class GameReviewScreen extends Screen {
         g.fill(0, 0, width, height, 0xA0101010);
         g.drawCenteredString(font, "Проверка состава · " + game.title, width / 2, 18, 0xFFFFFF);
         int players = game.players.size(), total = service.enabledRoleCount(game);
-        g.drawCenteredString(font, "Участников: " + players + " · выбранных ролей: " + total + (players == total ? " · совпадает" : " · не совпадает"), width / 2, 43,
-                players == total ? 0xAADD99 : 0xFF8888);
+        int peaceful = Math.max(0, players - total);
+        boolean validCount = total <= players;
+        g.drawCenteredString(font, "Участников: " + players + " · ролей с действиями: " + total
+                        + (peaceful > 0 ? " · мирных автоматически: " + peaceful : "")
+                        + (validCount ? "" : " · ролей больше, чем игроков"), width / 2, 43,
+                validCount ? 0xAADD99 : 0xFF8888);
         g.drawCenteredString(font, "Каждый шаблон роли будет скопирован в партию; последующие правки шаблонов не изменят эту раздачу.", width / 2, 61, 0xA0A0A0);
         String composition = game.rolePlan == null ? "Роли партии не настроены" : game.rolePlan.stream()
                 .filter(selection -> selection != null && selection.enabled)
