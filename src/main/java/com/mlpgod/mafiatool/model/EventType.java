@@ -1,0 +1,25 @@
+package com.mlpgod.mafiatool.model;
+
+public enum EventType {
+    GAME_CREATED,
+    GAME_STARTED,
+    ROLES_ASSIGNED,
+    ROLES_REDISTRIBUTED,
+    PHASE_CHANGED,
+    ACTION,
+    KILL_ATTEMPT,
+    CHECK,
+    TREATMENT,
+    CUSTOM_ACTION,
+    VOTE,
+    VOTE_RESULT,
+    PLAYER_DIED,
+    PLAYER_REVIVED,
+    PLAYER_EXCLUDED,
+    PLAYER_RESTORED,
+    PLAYER_RENAMED,
+    ROLE_CHANGED,
+    GAME_FINISHED,
+    GAME_REOPENED,
+    CORRECTION
+}

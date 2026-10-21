@@ -3,7 +3,7 @@
   "id": "mafiatool",
   "version": "${version}",
   "name": "Mafia Host Tool",
-  "description": "Client-side role randomizer for hosting Mafia games.",
+  "description": "Client-side multi-game manager and event log for Mafia hosts.",
   "authors": ["mlpgod"],
   "environment": "client",
   "entrypoints": { "client": ["com.mlpgod.mafiatool.MafiaToolClient"] },

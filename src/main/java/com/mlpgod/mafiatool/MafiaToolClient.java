@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.resources.Identifier;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mlpgod.mafiatool.screen.MafiaGamesScreen;
 import org.lwjgl.glfw.GLFW;
 
 public final class MafiaToolClient implements ClientModInitializer {
@@ -19,8 +20,8 @@ public final class MafiaToolClient implements ClientModInitializer {
                 "key.mafiatool.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_M, CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openScreenKey.consumeClick()) {
-                if (client.screen == null) client.setScreen(new MafiaHostScreen());
-                else if (client.screen instanceof MafiaHostScreen) client.setScreen(null);
+                if (client.screen instanceof MafiaGamesScreen) client.setScreen(null);
+                else client.setScreen(new MafiaGamesScreen());
             }
         });
     }
