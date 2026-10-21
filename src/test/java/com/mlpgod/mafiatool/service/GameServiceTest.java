@@ -94,11 +94,43 @@ class GameServiceTest {
     }
 
     @Test
+    void incompletePartyJsonIsRepairedBeforeScreensReadIt() throws Exception {
+        Path games = temp.resolve("mafiatool/games");
+        Files.createDirectories(games);
+        Files.writeString(games.resolve("incomplete.json"), """
+                {"schemaVersion":1,"id":"incomplete","title":null,"status":null,
+                 "players":[null,{"id":null,"name":null,"status":null}],
+                 "rolePlan":[null,{"templateId":"missing","role":null}],
+                 "events":[null,{"phase":null,"type":null,"description":null}],"votes":[null]}
+                """);
+
+        GameRepository repository = new GameRepository(temp);
+        List<GameRecord> loaded = repository.loadAll();
+        assertEquals(1, loaded.size());
+        assertEquals("Игра", loaded.get(0).title);
+        assertEquals(1, loaded.get(0).players.size());
+        assertEquals("Игрок", loaded.get(0).players.get(0).name);
+        assertTrue(repository.recoveryMessages().stream().anyMatch(message -> message.contains("исправлены")));
+    }
+
+    @Test
     void duplicatePlayerNamesAreRejectedCaseInsensitively() {
         GameService service = service(temp);
         GameRecord game = service.createGame("Duplicate check");
         service.addPlayer(game, "Player");
         assertThrows(IllegalArgumentException.class, () -> service.addPlayer(game, "player"));
+    }
+
+    @Test
+    void validationReportsIncompleteSavedRowsInsteadOfCrashing() {
+        GameService service = service(temp);
+        GameRecord game = service.createGame("Incomplete save");
+        game.players.add(null);
+        game.rolePlan.add(null);
+
+        List<String> errors = assertDoesNotThrow(() -> service.validationErrors(game));
+        assertTrue(errors.stream().anyMatch(error -> error.contains("без ника")));
+        assertTrue(errors.stream().anyMatch(error -> error.contains("пустая запись")));
     }
 
     @Test
