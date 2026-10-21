@@ -66,7 +66,7 @@ public final class GameService {
         GameRecord game = new GameRecord();
         game.title = title == null || title.isBlank() ? "Новая партия" : title.trim();
         for (RoleDefinition role : roleTemplates()) game.rolePlan.add(new RoleSelection(role));
-        addEvent(game, EventType.GAME_CREATED, null, null, "Ведущий создал партию", "", "");
+        addEvent(game, EventType.GAME_CREATED, null, null, "Ведущий", "", "Партия создана", "");
         store(game);
         return game;
     }
@@ -112,7 +112,8 @@ public final class GameService {
             throw new IllegalArgumentException("Такой ник уже есть в партии");
         String oldName = player.name;
         player.name = value;
-        addEvent(game, EventType.PLAYER_RENAMED, player.id, player.id, oldName + " → " + value, "", "");
+        addEvent(game, EventType.PLAYER_RENAMED, player.id, player.id, "Ведущий", value,
+                oldName + " → " + value, "");
         store(game);
     }
 
@@ -211,14 +212,15 @@ public final class GameService {
         if (game.rolesAssigned) throw new IllegalStateException("Роли уже распределены. Для перераспределения используйте отдельную команду с подтверждением");
         List<String> errors = validationErrors(game);
         if (!errors.isEmpty()) throw new IllegalStateException(String.join("\n", errors));
-        List<RoleDefinition> pool = new ArrayList<>();
+        List<RoleSelection> pool = new ArrayList<>();
         for (RoleSelection selection : game.rolePlan) if (selection.enabled)
             for (int i = 0; i < selection.count; i++) pool.add(selection);
         for (int i = pool.size() - 1; i > 0; i--) Collections.swap(pool, i, random.nextInt(i + 1));
         for (int i = 0; i < game.players.size(); i++) game.players.get(i).role = copy(pool.get(i).role);
         game.rolesAssigned = true;
         addEvent(game, replacement ? EventType.ROLES_REDISTRIBUTED : EventType.ROLES_ASSIGNED,
-                null, null, replacement ? "Ведущий перераспределил роли" : "Ведущий распределил роли", "Роли зафиксированы", "");
+                null, null, "Ведущий", "",
+                replacement ? "Ведущий перераспределил роли" : "Ведущий распределил роли", "Роли зафиксированы");
         store(game);
     }
 
@@ -239,7 +241,7 @@ public final class GameService {
         game.status = GameStatus.ACTIVE;
         game.startedAt = System.currentTimeMillis();
         game.phase = new GamePhase(initialPhase, 1);
-        addEvent(game, EventType.GAME_STARTED, null, null, "Партия началась", game.phase.toString(), "");
+        addEvent(game, EventType.GAME_STARTED, null, null, "Ведущий", "", "Партия началась", game.phase.toString());
         store(game);
     }
 
@@ -249,7 +251,8 @@ public final class GameService {
         if (game.phase.kind == PhaseKind.NIGHT) game.phase = new GamePhase(PhaseKind.DAY, game.phase.number);
         else if (game.phase.kind == PhaseKind.DAY) game.phase = new GamePhase(PhaseKind.NIGHT, game.phase.number + 1);
         else throw new IllegalStateException("Текущую фазу нельзя переключить");
-        addEvent(game, EventType.PHASE_CHANGED, null, null, previous.toString() + " → " + game.phase, "", "");
+        addEvent(game, EventType.PHASE_CHANGED, null, null, "Ведущий", "",
+                previous.toString() + " → " + game.phase, "");
         store(game);
     }
 
@@ -379,7 +382,8 @@ public final class GameService {
         game.phase = new GamePhase(PhaseKind.FINISHED, game.phase.number);
         game.winningTeam = winningTeam == null ? "" : winningTeam.trim();
         game.hostComment = comment == null ? "" : comment.trim();
-        addEvent(game, EventType.GAME_FINISHED, null, null, "Ведущий завершил партию", game.winningTeam, game.hostComment, "");
+        addEvent(game, EventType.GAME_FINISHED, null, null, "Ведущий", game.winningTeam,
+                "Партия завершена", game.hostComment);
         store(game);
     }
 
@@ -388,7 +392,8 @@ public final class GameService {
         game.status = GameStatus.ACTIVE;
         game.phase = lastPlayPhase(game);
         game.finishedAt = 0;
-        addEvent(game, EventType.GAME_REOPENED, null, null, "Архивная партия восстановлена", game.phase.toString(), "", "");
+        addEvent(game, EventType.GAME_REOPENED, null, null, "Ведущий", "",
+                "Архивная партия восстановлена", game.phase.toString());
         store(game);
     }
 

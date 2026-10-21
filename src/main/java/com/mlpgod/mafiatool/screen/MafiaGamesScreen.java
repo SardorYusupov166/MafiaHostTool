@@ -80,6 +80,11 @@ public final class MafiaGamesScreen extends Screen {
 
     private List<GameRecord> visibleGames() { return archive ? SERVICE.archivedGames() : SERVICE.activeGames(); }
 
+    private String clip(String value, int pixelWidth) {
+        int max = Math.max(12, pixelWidth / 6);
+        return value.length() > max ? value.substring(0, max - 1) + "…" : value;
+    }
+
     private void confirmDelete(GameRecord game) {
         Minecraft.getInstance().setScreen(new ConfirmScreen(yes -> {
             if (yes) {
@@ -131,7 +136,7 @@ public final class MafiaGamesScreen extends Screen {
             String updated = DATE.format(Instant.ofEpochMilli(game.updatedAt));
             String details = state + " · " + game.players.size() + " игроков · " + game.aliveCount() + " живы · " + phase
                     + " · создана " + created + " · изм. " + updated;
-            g.drawString(font, font.substrByWidth(details, rowW - 8),
+            g.drawString(font, clip(details, rowW - 8),
                     left, y + 29, 0xAAAAAA);
         }
         if (games.isEmpty()) g.drawCenteredString(font, archive ? "Архив пока пуст" : "Активных партий пока нет", width / 2, height / 2, 0xC0C0C0);

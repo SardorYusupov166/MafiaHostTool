@@ -96,10 +96,14 @@ public final class GameReviewScreen extends Screen {
                 .filter(selection -> selection.enabled)
                 .map(selection -> selection.role.name + " × " + selection.count)
                 .reduce((a, b) -> a + " · " + b).orElse("Нет включённых ролей");
-        g.drawCenteredString(font, font.substrByWidth(composition, Math.max(80, width - 32)), width / 2, 77, 0xC0C0C0);
+        g.drawCenteredString(font, clip(composition, Math.max(80, width - 32)), width / 2, 77, 0xC0C0C0);
         if (game.rolesAssigned) g.drawCenteredString(font, "Роли уже распределены и сохранены", width / 2, height - 64, 0xAADD99);
         if (!message.isBlank()) g.drawCenteredString(font, message, width / 2, height - 55, 0xFF8888);
         super.render(g, x, y, d);
+    }
+    private String clip(String value, int pixelWidth) {
+        int max = Math.max(12, pixelWidth / 6);
+        return value.length() > max ? value.substring(0, max - 1) + "…" : value;
     }
     @Override public boolean isPauseScreen() { return false; }
 }
