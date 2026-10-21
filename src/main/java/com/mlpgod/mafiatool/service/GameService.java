@@ -325,8 +325,8 @@ public final class GameService {
 
     public Map<String, Integer> voteTally(GameRecord game, int dayNumber) {
         Map<String, VoteRecord> latest = new LinkedHashMap<>();
-        game.votes.stream().filter(v -> v.dayNumber == dayNumber).sorted(Comparator.comparingLong(v -> v.timestamp))
-                .forEach(v -> latest.put(v.voterId, v));
+        // Vote records are appended in action order; timestamps can match when someone quickly changes a vote.
+        game.votes.stream().filter(v -> v.dayNumber == dayNumber).forEach(v -> latest.put(v.voterId, v));
         Map<String, Integer> tally = new LinkedHashMap<>();
         for (VoteRecord vote : latest.values()) if (vote.targetId != null)
             tally.merge(vote.targetId, 1, Integer::sum);
