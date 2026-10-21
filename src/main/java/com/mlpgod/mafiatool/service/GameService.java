@@ -160,7 +160,11 @@ public final class GameService {
     }
 
     public int enabledRoleCount(GameRecord game) {
-        return game.rolePlan == null ? 0 : game.rolePlan.stream().filter(r -> r.enabled).mapToInt(r -> r.count).sum();
+        return game == null || game.rolePlan == null ? 0 : game.rolePlan.stream()
+                .filter(Objects::nonNull)
+                .filter(r -> r.enabled)
+                .mapToInt(r -> Math.max(0, r.count))
+                .sum();
     }
 
     public void addMissingRoleTemplates(GameRecord game) {
@@ -188,16 +192,34 @@ public final class GameService {
 
     public List<String> validationErrors(GameRecord game) {
         List<String> errors = new ArrayList<>();
+        if (game == null) {
+            errors.add("Партия не найдена");
+            return errors;
+        }
+        if (game.players == null) {
+            errors.add("Не удалось загрузить список участников");
+            return errors;
+        }
         if (game.players.isEmpty()) errors.add("Добавьте хотя бы одного игрока");
         Set<String> names = new HashSet<>();
-        for (GamePlayer p : game.players) if (!names.add(p.name.toLowerCase(Locale.ROOT))) errors.add("Ники участников повторяются");
+        for (GamePlayer p : game.players) {
+            if (p == null || p.name == null || p.name.isBlank()) {
+                errors.add("В списке есть участник без ника");
+            } else if (!names.add(p.name.toLowerCase(Locale.ROOT))) {
+                errors.add("Ники участников повторяются");
+            }
+        }
         int selected = enabledRoleCount(game);
         if (selected != game.players.size())
             errors.add("Количество выбранных ролей (" + selected + ") должно равняться игрокам (" + game.players.size() + ")");
         if (game.rolePlan == null) errors.add("У партии не сохранён список ролей");
         for (RoleSelection selection : game.rolePlan == null ? List.<RoleSelection>of() : game.rolePlan) {
-            if (selection.enabled && (selection.count < 1 || selection.role == null))
+            if (selection == null) {
+                errors.add("В списке ролей есть пустая запись");
+            } else if (selection.enabled && (selection.count < 1 || selection.count > 50 || selection.role == null
+                    || selection.role.name == null || selection.role.name.isBlank())) {
                 errors.add("У выбранной роли некорректное количество или отсутствует шаблон");
+            }
         }
         return errors;
     }
