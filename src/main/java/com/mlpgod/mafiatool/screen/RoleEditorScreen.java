@@ -50,7 +50,7 @@ public final class RoleEditorScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal(enabled ? "Включена" : "Выключена"), b -> {
             enabled = !enabled; b.setMessage(Component.literal(enabled ? "Включена" : "Выключена"));
         }).bounds(left + 166, y + 102, 112, 22).build());
-        int descriptionWidth = Math.min(500, width - 40);
+        int descriptionWidth = width - 40;
         int descriptionLeft = (width - descriptionWidth) / 2;
         description = edit(descriptionLeft, y + 150, descriptionWidth, "Описание роли", role.description);
         description.setMaxLength(400);
@@ -87,13 +87,13 @@ public final class RoleEditorScreen extends Screen {
         int left = width / 2 - 170;
         g.drawString(font, "Название:", left, 71, 0xD0D0D0);
         g.drawString(font, "Количество:", left, 174, 0xD0D0D0);
-        g.drawString(font, "Описание:", width / 2 - Math.min(500, width - 40) / 2, 204, 0xD0D0D0);
+        int previewWidth = width - 40;
+        int previewLeft = 20;
+        g.drawString(font, "Описание:", previewLeft, 204, 0xD0D0D0);
         String descriptionText = description == null ? role.description : description.getValue();
         if (descriptionText == null || descriptionText.isBlank()) {
-            g.drawString(font, "Предпросмотр: описание пока пустое", width / 2 - Math.min(500, width - 40) / 2, 244, 0x909090);
+            g.drawString(font, "Предпросмотр: описание пока пустое", previewLeft, 244, 0x909090);
         } else {
-            int previewLeft = width / 2 - Math.min(500, width - 40) / 2;
-            int previewWidth = Math.min(500, width - 40);
             g.drawString(font, "Предпросмотр:", previewLeft, 242, 0xA0A0A0);
             var lines = font.split(Component.literal(descriptionText), previewWidth);
             int previewBottom = height - 58;
