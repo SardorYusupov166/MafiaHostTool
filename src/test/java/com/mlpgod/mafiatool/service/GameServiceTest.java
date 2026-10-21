@@ -68,6 +68,7 @@ class GameServiceTest {
         service.castVote(game, game.players.get(0).id, game.players.get(2).id);
         service.castVote(game, game.players.get(1).id, game.players.get(1).id);
         service.castVote(game, game.players.get(2).id, game.players.get(2).id);
+        service.castVote(game, game.players.get(3).id, game.players.get(1).id);
         assertEquals(2, service.voteLeaders(game, 1).size());
         service.setPlayerStatus(game, game.players.get(3).id, PlayerStatus.DEAD, "Проверка статуса");
         assertThrows(IllegalStateException.class, () -> service.castVote(game, game.players.get(3).id, game.players.get(1).id));
