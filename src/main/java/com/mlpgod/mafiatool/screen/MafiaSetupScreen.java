@@ -95,7 +95,9 @@ public final class MafiaSetupScreen extends Screen {
             if (!game.title.equals(title.getValue().trim())) service.renameGame(game, title.getValue());
             List<String> errors = service.validationErrors(game);
             message = errors.isEmpty()
-                    ? "Состав подходит: " + game.players.size() + " игроков, роли: " + service.enabledRoleCount()
+                    ? "Состав подходит: " + game.players.size() + " игроков, ролей с действиями: " + service.enabledRoleCount(game)
+                        + (Math.max(0, game.players.size() - service.enabledRoleCount(game)) > 0
+                            ? ", мирных автоматически: " + Math.max(0, game.players.size() - service.enabledRoleCount(game)) : "")
                     : String.join(" · ", errors);
         } catch (Exception e) { message = e.getMessage(); }
     }
@@ -117,7 +119,8 @@ public final class MafiaSetupScreen extends Screen {
             }
         } else {
             int selected = service.enabledRoleCount(game);
-            g.drawString(font, "Игроков: " + game.players.size() + " · выбранных ролей: " + selected, left, height - 64, 0xA0A0A0);
+            g.drawString(font, "Игроков: " + game.players.size() + " · ролей с действиями: " + selected
+                    + " · мирных автоматически: " + Math.max(0, game.players.size() - selected), left, height - 64, 0xA0A0A0);
         }
         if (!message.isBlank()) g.drawString(font, message, left, height - 54, 0xFFFFFF);
         super.render(g, mouseX, mouseY, delta);
