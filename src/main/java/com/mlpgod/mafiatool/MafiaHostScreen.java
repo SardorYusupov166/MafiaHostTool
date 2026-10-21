@@ -311,7 +311,10 @@ public final class MafiaHostScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        renderBackground(graphics, mouseX, mouseY, delta);
+        // Minecraft 1.21.11 and blur mods may already render the blurred
+        // screen background for this frame. Calling renderBackground here can
+        // request a second blur and crash with "Can only blur once per frame".
+        graphics.fill(0, 0, width, height, 0xA0101010);
         graphics.drawCenteredString(font, "Ведущий мафии", width / 2, 18, 0xFFFFFF);
         int left = Math.max(14, width / 2 - 210);
         graphics.drawString(font, "Игроки:", left, 51, 0xD0D0D0);
