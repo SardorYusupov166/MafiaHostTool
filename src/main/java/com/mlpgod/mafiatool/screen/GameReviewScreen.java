@@ -40,7 +40,7 @@ public final class GameReviewScreen extends Screen {
         int rowTop = 112;
         for (int i = scroll; i < game.players.size() && i < scroll + visible; i++) {
             GamePlayer player = game.players.get(i);
-            String role = player.role == null ? "Будет назначена случайно" : player.role.name;
+            String role = player.role == null ? "Будет назначена случайно" : safe(player.role.name, "Без названия");
             int y = rowTop + (i - scroll) * 24;
             int playerIndex = i;
             addRenderableWidget(Button.builder(Component.literal(clip(player.name, firstWidth - 14)), b -> selectPlayer(playerIndex))
@@ -49,9 +49,9 @@ public final class GameReviewScreen extends Screen {
                     .bounds(left + firstWidth + gap + 4, y, secondWidth - 8, 22).build());
         }
         if (game.players.size() > visible) {
-            addRenderableWidget(Button.builder(Component.literal("▲"), b -> { scroll = Math.max(0, scroll - 1); rebuildWidgets(); })
+            addRenderableWidget(Button.builder(Component.literal("▲"), b -> { setPlayerScroll(scroll - 1); rebuildWidgets(); })
                     .bounds(left + firstWidth - 24, 88, 20, 20).build());
-            addRenderableWidget(Button.builder(Component.literal("▼"), b -> { scroll = Math.min(game.players.size() - visible, scroll + 1); rebuildWidgets(); })
+            addRenderableWidget(Button.builder(Component.literal("▼"), b -> { setPlayerScroll(scroll + 1); rebuildWidgets(); })
                     .bounds(left + firstWidth - 24, height - 132, 20, 20).build());
         }
         int bottom = height - 40;
@@ -80,6 +80,17 @@ public final class GameReviewScreen extends Screen {
         selectedPlayer = index;
         detailsScroll = 0;
         rebuildWidgets();
+    }
+
+    private void setPlayerScroll(int target) {
+        int visible = visiblePlayers();
+        scroll = Math.max(0, Math.min(Math.max(0, game.players.size() - visible), target));
+        if (game.players.isEmpty()) {
+            selectedPlayer = 0;
+        } else if (selectedPlayer < scroll || selectedPlayer >= scroll + visible) {
+            selectedPlayer = scroll;
+            detailsScroll = 0;
+        }
     }
 
     private void distribute() {
@@ -126,8 +137,8 @@ public final class GameReviewScreen extends Screen {
                 players == total ? 0xAADD99 : 0xFF8888);
         g.drawCenteredString(font, "Каждый шаблон роли будет скопирован в партию; последующие правки шаблонов не изменят эту раздачу.", width / 2, 61, 0xA0A0A0);
         String composition = game.rolePlan == null ? "Роли партии не настроены" : game.rolePlan.stream()
-                .filter(selection -> selection.enabled)
-                .map(selection -> selection.role.name + " × " + selection.count)
+                .filter(selection -> selection != null && selection.enabled)
+                .map(selection -> (selection.role == null ? "Роль без шаблона" : safe(selection.role.name, "Без названия")) + " × " + selection.count)
                 .reduce((a, b) -> a + " · " + b).orElse("Нет включённых ролей");
         g.drawCenteredString(font, clip(composition, Math.max(80, width - 32)), width / 2, 77, 0xC0C0C0);
         int left = 16;
@@ -155,8 +166,11 @@ public final class GameReviewScreen extends Screen {
             g.drawCenteredString(font, "Раздача сохранена · выбери игрока, чтобы посмотреть описание роли", width / 2, height - 92, 0xAADD99);
         }
         super.render(g, x, y, d);
-        drawOutline(g, left + 2, rowTop + (selectedPlayer - scroll) * 24, firstWidth - 4, 22, 0xFFFF5555);
-        drawOutline(g, left + firstWidth + gap + 2, rowTop + (selectedPlayer - scroll) * 24, secondWidth - 4, 22, 0xFFFF5555);
+        if (selectedPlayer >= scroll && selectedPlayer < scroll + visiblePlayers() && selectedPlayer < game.players.size()) {
+            int selectedY = rowTop + (selectedPlayer - scroll) * 24;
+            drawOutline(g, left + 2, selectedY, firstWidth - 4, 22, 0xFFFF5555);
+            drawOutline(g, left + firstWidth + gap + 2, selectedY, secondWidth - 4, 22, 0xFFFF5555);
+        }
     }
 
     private void drawPanel(GuiGraphics g, int x, int top, int panelWidth, int bottom, String title) {
@@ -172,7 +186,7 @@ public final class GameReviewScreen extends Screen {
         }
         GamePlayer player = game.players.get(selectedPlayer);
         if (player.role == null) {
-            g.drawString(font, player.name, x, y, 0xFFFFFF);
+            g.drawString(font, safe(player.name, "Игрок"), x, y, 0xFFFFFF);
             g.drawString(font, "Роль ещё не распределена.", x, y + 16, 0xB0B0B0);
             g.drawString(font, "После раздачи здесь появятся", x, y + 34, 0x909090);
             g.drawString(font, "команда, фаза и полное описание.", x, y + 46, 0x909090);
@@ -185,7 +199,7 @@ public final class GameReviewScreen extends Screen {
         String phase = role.actionPhase == null ? "Любая" : switch (role.actionPhase) {
             case DAY -> "День"; case NIGHT -> "Ночь"; case ANY -> "Любая";
         };
-        String details = player.name + "\nРоль: " + role.name + "\nКоманда: " + team + "\nФаза действия: " + phase + "\n\n"
+        String details = safe(player.name, "Игрок") + "\nРоль: " + safe(role.name, "Без названия") + "\nКоманда: " + team + "\nФаза действия: " + phase + "\n\n"
                 + (role.description == null || role.description.isBlank() ? "Описание не задано." : role.description);
         var lines = font.split(Component.literal(details), Math.max(40, panelWidth));
         int maxLines = Math.max(1, panelHeight / 10);
@@ -203,9 +217,11 @@ public final class GameReviewScreen extends Screen {
         g.fill(x + outlineWidth - 1, y, x + outlineWidth, y + outlineHeight, color);
     }
     private String clip(String value, int pixelWidth) {
+        if (value == null) return "";
         int max = Math.max(12, pixelWidth / 6);
         return value.length() > max ? value.substring(0, max - 1) + "…" : value;
     }
+    private String safe(String value, String fallback) { return value == null || value.isBlank() ? fallback : value; }
     @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
         if (vertical == 0) return super.mouseScrolled(x, y, horizontal, vertical);
         int left = 16;
@@ -221,7 +237,7 @@ public final class GameReviewScreen extends Screen {
         }
         int visible = visiblePlayers();
         if (x >= left && x < detailsLeft && y >= 88 && y < height - 104 && game.players.size() > visible) {
-            scroll = Math.max(0, Math.min(game.players.size() - visible, scroll - (int) Math.signum(vertical)));
+            setPlayerScroll(scroll - (int) Math.signum(vertical));
             rebuildWidgets();
             return true;
         }
