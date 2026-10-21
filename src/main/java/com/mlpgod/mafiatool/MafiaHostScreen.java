@@ -23,21 +23,22 @@ import java.util.Random;
 public final class MafiaHostScreen extends Screen {
     private static final int MAX_PLAYERS = 50;
     private static final int MAX_ROLE_NAME = 32;
+    private static final List<PlayerAssignment> assignments = new ArrayList<>();
+    private static String playersInput = "10";
+    private static String nicknamesInput = "";
     private final Map<String, RoleOption> roles = new LinkedHashMap<>();
-    private final List<PlayerAssignment> assignments = new ArrayList<>();
     private final Map<String, EditBox> countBoxes = new LinkedHashMap<>();
     private final Path roleFile = FabricLoader.getInstance().getConfigDir().resolve("mafiatool-roles.txt");
     private EditBox playerCountBox;
     private EditBox nicknamesBox;
     private EditBox newRoleBox;
-    private String playersInput = "10";
-    private String nicknamesInput = "";
     private String status = "Добавьте роли или используйте примеры";
     private int scroll;
     private int resultScroll;
 
     public MafiaHostScreen() {
         super(Component.literal("Ведущий мафии"));
+        if (!assignments.isEmpty()) status = "Текущая раздача сохранена";
         loadRoles();
     }
 
@@ -159,6 +160,8 @@ public final class MafiaHostScreen extends Screen {
         if (!assignments.isEmpty()) {
             int resultX = resultX();
             int nameWidth = nameFieldWidth(resultX);
+            int roleX = resultX + nameWidth + 8;
+            int roleWidth = roleFieldWidth(resultX);
             int visibleAssignments = visibleAssignmentRows();
             resultScroll = Math.min(resultScroll, Math.max(0, assignments.size() - visibleAssignments));
             for (int i = resultScroll; i < assignments.size() && i < resultScroll + visibleAssignments; i++) {
@@ -169,6 +172,12 @@ public final class MafiaHostScreen extends Screen {
                 nameBox.setValue(assignment.name);
                 nameBox.setResponder(value -> assignment.name = value);
                 addRenderableWidget(nameBox);
+
+                EditBox roleBox = new EditBox(font, roleX, y, roleWidth, 20, Component.literal("Роль"));
+                roleBox.setMaxLength(MAX_ROLE_NAME);
+                roleBox.setValue(assignment.role);
+                roleBox.setEditable(false);
+                addRenderableWidget(roleBox);
             }
         }
 
@@ -177,6 +186,13 @@ public final class MafiaHostScreen extends Screen {
                 .bounds(left, buttonY, 112, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Скопировать"), button -> copyResults())
                 .bounds(left + 118, buttonY, 94, 22).build());
+        addRenderableWidget(Button.builder(Component.literal("Новая партия"), button -> {
+            assignments.clear();
+            nicknamesInput = "";
+            resultScroll = 0;
+            status = "Текущая раздача очищена";
+            refreshWidgets();
+        }).bounds(left + 218, buttonY, 104, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Готово"), button -> onClose())
                 .bounds(width - 78, buttonY, 60, 22).build());
     }
@@ -187,6 +203,10 @@ public final class MafiaHostScreen extends Screen {
 
     private int nameFieldWidth(int resultX) {
         return Math.max(70, Math.min(120, (width - resultX - 28) / 2));
+    }
+
+    private int roleFieldWidth(int resultX) {
+        return Math.max(60, Math.min(150, width - resultX - nameFieldWidth(resultX) - 16));
     }
 
     private int visibleAssignmentRows() {
@@ -217,7 +237,6 @@ public final class MafiaHostScreen extends Screen {
             return;
         }
         roles.put(name, new RoleOption(false, 1));
-        assignments.clear();
         saveRoles();
         status = "Роль «" + name + "» добавлена и сохранена";
         refreshWidgets();
@@ -290,7 +309,7 @@ public final class MafiaHostScreen extends Screen {
         }
         saveRoles();
         resultScroll = 0;
-        status = "Готово: распределено игроков — " + players;
+        status = "Роли разданы: " + selectedCount + " выбранных, мирных жителей — " + (players - selectedCount);
         refreshWidgets();
     }
 
@@ -325,12 +344,8 @@ public final class MafiaHostScreen extends Screen {
         graphics.drawString(font, status, left, height - 53, 0xFFFFFF);
         int resultX = resultX();
         graphics.drawString(font, "Распределение для ведущего", resultX, 49, 0xFFFFFF);
-        int nameWidth = nameFieldWidth(resultX);
-        int roleX = resultX + nameWidth + 8;
-        for (int i = resultScroll; i < assignments.size() && i < resultScroll + visibleAssignmentRows(); i++) {
-            PlayerAssignment assignment = assignments.get(i);
-            graphics.drawString(font, assignment.role, roleX, 78 + (i - resultScroll) * 23, 0xE0E0E0);
-        }
+        graphics.drawString(font, "Ник игрока", resultX, 61, 0xA0A0A0);
+        graphics.drawString(font, "Роль", resultX + nameFieldWidth(resultX) + 8, 61, 0xA0A0A0);
         super.render(graphics, mouseX, mouseY, delta);
     }
 
