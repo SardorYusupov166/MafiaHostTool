@@ -62,7 +62,7 @@ public final class RoleRepository {
             if (role.actionPhase == null) role.actionPhase = RolePhase.ANY;
             role.count = Math.max(0, Math.min(50, role.count));
         }
-        return library.roles.isEmpty() ? defaults() : library.roles;
+        return library.roles;
     }
 
     public void save(List<RoleDefinition> roles) {
