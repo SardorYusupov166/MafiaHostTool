@@ -77,11 +77,32 @@ public final class GameRepository {
         GameRecord record = GSON.fromJson(reader, GameRecord.class);
         if (record == null || record.id == null || record.id.isBlank()) throw new IllegalStateException("нет ID партии");
         if (record.schemaVersion < 1 || record.schemaVersion > 1) throw new IllegalStateException("неподдерживаемая версия схемы " + record.schemaVersion);
+        boolean repaired = false;
+        if (record.title == null || record.title.isBlank()) { record.title = "Игра"; repaired = true; }
+        if (record.status == null) { record.status = GameStatus.PREPARING; repaired = true; }
         if (record.players == null) record.players = new ArrayList<>();
+        else repaired |= record.players.removeIf(player -> player == null);
+        for (GamePlayer player : record.players) {
+            if (player.id == null || player.id.isBlank()) { player.id = UUID.randomUUID().toString(); repaired = true; }
+            if (player.name == null || player.name.isBlank()) { player.name = "Игрок"; repaired = true; }
+            if (player.status == null) { player.status = PlayerStatus.ALIVE; repaired = true; }
+        }
         if (record.rolePlan == null) record.rolePlan = new ArrayList<>();
+        else repaired |= record.rolePlan.removeIf(selection -> selection == null || selection.role == null);
         if (record.events == null) record.events = new ArrayList<>();
+        else repaired |= record.events.removeIf(event -> event == null);
         if (record.votes == null) record.votes = new ArrayList<>();
-        if (record.phase == null) record.phase = new GamePhase();
+        else repaired |= record.votes.removeIf(vote -> vote == null);
+        if (record.phase == null || record.phase.kind == null) { record.phase = new GamePhase(); repaired = true; }
+        for (GameEvent event : record.events) {
+            if (event.phase == null || event.phase.kind == null) { event.phase = new GamePhase(record.phase.kind, record.phase.number); repaired = true; }
+            if (event.type == null) { event.type = EventType.ACTION; repaired = true; }
+            if (event.actorLabel == null) event.actorLabel = "Ведущий";
+            if (event.targetLabel == null) event.targetLabel = "";
+            if (event.description == null) event.description = "";
+            if (event.result == null) event.result = "";
+        }
+        if (repaired) recoveryMessages.add("В сохранении партии исправлены пустые записи: " + record.title);
         return record;
     }
 
