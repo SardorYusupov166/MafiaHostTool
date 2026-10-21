@@ -60,12 +60,18 @@ public final class GameReviewScreen extends Screen {
 
     private void distribute() {
         List<String> errors = service.validationErrors(game);
-        if (!errors.isEmpty()) { message = String.join(" · ", errors); return; }
-        Minecraft.getInstance().setScreen(new ConfirmScreen(yes -> {
-            if (yes) try { service.distributeRoles(game); message = "Роли закреплены за участниками"; }
-            catch (Exception e) { message = e.getMessage(); }
-            Minecraft.getInstance().setScreen(this); rebuildWidgets();
-        }, Component.literal("Распределить роли?"), Component.literal("Назначение будет сохранено. Открытие партии больше не перемешивает роли."), Component.literal("Распределить"), Component.literal("Отмена")));
+        if (!errors.isEmpty()) {
+            message = String.join(" · ", errors);
+            rebuildWidgets();
+            return;
+        }
+        try {
+            service.distributeRoles(game);
+            message = "Роли распределены и сохранены";
+        } catch (Exception e) {
+            message = e.getMessage() == null ? "Не удалось распределить роли" : e.getMessage();
+        }
+        rebuildWidgets();
     }
 
     private void redistribute() {
@@ -98,12 +104,29 @@ public final class GameReviewScreen extends Screen {
                 .reduce((a, b) -> a + " · " + b).orElse("Нет включённых ролей");
         g.drawCenteredString(font, clip(composition, Math.max(80, width - 32)), width / 2, 77, 0xC0C0C0);
         if (game.rolesAssigned) g.drawCenteredString(font, "Роли уже распределены и сохранены", width / 2, height - 64, 0xAADD99);
-        if (!message.isBlank()) g.drawCenteredString(font, message, width / 2, height - 55, 0xFF8888);
+        if (!message.isBlank()) {
+            var lines = font.split(Component.literal(message), Math.max(80, width - 40));
+            int y = Math.max(88, height - 82);
+            int color = game.rolesAssigned ? 0xAADD99 : 0xFF8888;
+            for (int i = 0; i < Math.min(lines.size(), 4); i++) {
+                g.drawCenteredString(font, lines.get(i), width / 2, y + i * 10, color);
+            }
+        }
         super.render(g, x, y, d);
     }
     private String clip(String value, int pixelWidth) {
         int max = Math.max(12, pixelWidth / 6);
         return value.length() > max ? value.substring(0, max - 1) + "…" : value;
     }
+    @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
+        int visible = Math.max(1, Math.min(12, (height - 196) / 24));
+        if (game.players.size() > visible && vertical != 0) {
+            scroll = Math.max(0, Math.min(game.players.size() - visible, scroll - (int) Math.signum(vertical)));
+            rebuildWidgets();
+            return true;
+        }
+        return super.mouseScrolled(x, y, horizontal, vertical);
+    }
+
     @Override public boolean isPauseScreen() { return false; }
 }
