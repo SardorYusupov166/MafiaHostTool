@@ -45,6 +45,39 @@ class GameServiceTest {
     }
 
     @Test
+    void missingActionRolesAreAutomaticallyFilledWithPeacefulTownMembers() {
+        GameService service = service(temp);
+        GameRecord game = service.createGame("Ten players, six active roles");
+        service.addPlayers(game, List.of("A", "B", "C", "D", "E", "F", "G", "H", "I", "J"));
+        RoleSelection mafia = game.rolePlan.stream()
+                .filter(selection -> selection.role.name.equals("Мафия")).findFirst().orElseThrow();
+        service.setGameRoleSelection(game, mafia.templateId, true, 4);
+
+        assertEquals(6, service.enabledRoleCount(game));
+        assertTrue(service.validationErrors(game).isEmpty());
+        service.distributeRoles(game);
+
+        assertEquals(10, game.players.size());
+        assertEquals(6, game.players.stream().filter(player -> !player.role.name.equals("Мирный житель")).count());
+        assertEquals(4, game.players.stream().filter(player -> player.role.name.equals("Мирный житель")).count());
+        assertTrue(game.players.stream().filter(player -> player.role.name.equals("Мирный житель"))
+                .allMatch(player -> player.role.team == RoleTeam.TOWN));
+    }
+
+    @Test
+    void validationRejectsMoreActionRolesThanPlayers() {
+        GameService service = service(temp);
+        GameRecord game = service.createGame("Too many roles");
+        service.addPlayers(game, List.of("A", "B", "C"));
+        RoleSelection mafia = game.rolePlan.stream()
+                .filter(selection -> selection.role.name.equals("Мафия")).findFirst().orElseThrow();
+        service.setGameRoleSelection(game, mafia.templateId, true, 4);
+
+        assertTrue(service.validationErrors(game).stream().anyMatch(error -> error.contains("больше, чем игроков")));
+        assertThrows(IllegalStateException.class, () -> service.distributeRoles(game));
+    }
+
+    @Test
     void killAttemptDoesNotAutomaticallyKillTargetAndPhasesAdvanceInOrder() {
         GameService service = service(temp);
         GameRecord game = preparedFourPlayerGame(service);
