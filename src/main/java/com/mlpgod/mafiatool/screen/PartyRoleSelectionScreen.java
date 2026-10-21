@@ -62,7 +62,11 @@ public final class PartyRoleSelectionScreen extends Screen {
     @Override public void render(GuiGraphics g, int x, int y, float d) {
         g.fill(0, 0, width, height, 0xA0101010);
         g.drawCenteredString(font, "Роли партии · " + game.title, width / 2, 18, 0xFFFFFF);
-        g.drawCenteredString(font, "Выбрано экземпляров: " + service.enabledRoleCount(game) + " / " + game.players.size(), width / 2, 40, 0xA0A0A0);
+        int selected = service.enabledRoleCount(game);
+        int peaceful = Math.max(0, game.players.size() - selected);
+        g.drawCenteredString(font, "Ролей с действиями: " + selected + " · мирных автоматически: " + peaceful
+                + (selected > game.players.size() ? " · ролей больше, чем игроков" : ""), width / 2, 40,
+                selected > game.players.size() ? 0xFF8888 : 0xA0A0A0);
         List<RoleSelection> roles = game.rolePlan;
         int left = Math.max(14, width / 2 - 250);
         for (int i = scroll; i < roles.size() && i < scroll + Math.max(1, Math.min(11, (height - 148) / 28)); i++) {
