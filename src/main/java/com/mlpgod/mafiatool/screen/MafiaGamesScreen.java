@@ -39,9 +39,11 @@ public final class MafiaGamesScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Создать партию"), b -> {
             GameRecord game = SERVICE.createGame("Новая партия");
             Minecraft.getInstance().setScreen(new MafiaSetupScreen(game));
-        }).bounds(right - 232, 48, 112, 20).build());
+        }).bounds(right - 288, 48, 112, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Роли"), b -> Minecraft.getInstance().setScreen(new RoleSettingsScreen()))
-                .bounds(right - 114, 48, 114, 20).build());
+                .bounds(right - 170, 48, 72, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("Макросы"), b -> Minecraft.getInstance().setScreen(new MacroSettingsScreen(this)))
+                .bounds(right - 92, 48, 92, 20).build());
 
         for (int i = scroll; i < games.size() && i < scroll + visible; i++) {
             GameRecord game = games.get(i);
