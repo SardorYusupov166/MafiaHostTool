@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.List;
 
@@ -41,11 +42,14 @@ public final class GameReviewScreen extends Screen {
         for (int i = scroll; i < game.players.size() && i < scroll + visible; i++) {
             GamePlayer player = game.players.get(i);
             String role = player.role == null ? "Будет назначена случайно" : safe(player.role.name, "Без названия");
+            RoleColor roleColor = player.role == null ? RoleColor.WHITE : player.role.color == null
+                    ? RoleColor.defaultFor(player.role.team) : player.role.color;
             int y = rowTop + (i - scroll) * 24;
             int playerIndex = i;
             addRenderableWidget(Button.builder(Component.literal(clip(player.name, firstWidth - 14)), b -> selectPlayer(playerIndex))
                     .bounds(left + 4, y, firstWidth - 8, 22).build());
-            addRenderableWidget(Button.builder(Component.literal(clip(role, secondWidth - 14)), b -> selectPlayer(playerIndex))
+            addRenderableWidget(Button.builder(Component.literal(clip(role, secondWidth - 14))
+                            .withStyle(style -> style.withColor(TextColor.fromRgb(roleColor.rgb))), b -> selectPlayer(playerIndex))
                     .bounds(left + firstWidth + gap + 4, y, secondWidth - 8, 22).build());
         }
         if (game.players.size() > visible) {
