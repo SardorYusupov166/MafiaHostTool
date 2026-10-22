@@ -2,6 +2,7 @@ package com.mlpgod.mafiatool.service;
 
 import com.mlpgod.mafiatool.model.*;
 import com.mlpgod.mafiatool.storage.GameRepository;
+import com.mlpgod.mafiatool.storage.MacroRepository;
 import com.mlpgod.mafiatool.storage.RoleRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -16,7 +17,7 @@ class GameServiceTest {
     @TempDir Path temp;
 
     private GameService service(Path root) {
-        return new GameService(new GameRepository(root), new RoleRepository(root));
+        return new GameService(new GameRepository(root), new RoleRepository(root), new MacroRepository(root));
     }
 
     private GameRecord preparedFourPlayerGame(GameService service) {
@@ -90,6 +91,49 @@ class GameServiceTest {
         service.advancePhase(game);
         assertEquals(new GamePhase(PhaseKind.NIGHT, 2).toString(), game.phase.toString());
         assertTrue(game.events.stream().anyMatch(e -> e.type == EventType.KILL_ATTEMPT && e.result.equals("Цель спасена доктором")));
+    }
+
+    @Test
+    void userMacroMarksTargetDeadOnlyWhenConfiguredResultConditionMatches() {
+        GameService service = service(temp);
+        GameRecord game = preparedFourPlayerGame(service);
+        ActionMacro macro = new ActionMacro();
+        macro.name = "Подтверждённое убийство";
+        macro.trigger = EventType.KILL_ATTEMPT;
+        macro.condition = "убит";
+        macro.effect = MacroEffect.MARK_TARGET_DEAD;
+        macro.textTemplate = "Убит игроком {actor} в фазе {phase}";
+        service.saveMacro(macro);
+        service.startGame(game, PhaseKind.NIGHT);
+
+        GamePlayer actor = game.players.get(0);
+        GamePlayer savedTarget = game.players.get(1);
+        service.recordAction(game, EventType.KILL_ATTEMPT, actor.id, savedTarget.id,
+                "Попытка убийства", "Цель спасена доктором");
+        assertEquals(PlayerStatus.ALIVE, savedTarget.status);
+
+        GamePlayer killedTarget = game.players.get(2);
+        service.recordAction(game, EventType.KILL_ATTEMPT, actor.id, killedTarget.id,
+                "Попытка убийства", "Игрок убит");
+        assertEquals(PlayerStatus.DEAD, killedTarget.status);
+        GameEvent death = game.events.stream().filter(event -> event.type == EventType.PLAYER_DIED
+                && killedTarget.id.equals(event.targetId)).findFirst().orElseThrow();
+        assertEquals(actor.id, death.actorId);
+        assertEquals("Убит игроком " + actor.name + " в фазе Ночь 1", death.result);
+    }
+
+    @Test
+    void userMacrosPersistAcrossServiceReload() {
+        GameService firstRun = service(temp);
+        ActionMacro macro = new ActionMacro();
+        macro.name = "Итог проверки";
+        macro.trigger = EventType.CHECK;
+        macro.effect = MacroEffect.ADD_LOG_NOTE;
+        firstRun.saveMacro(macro);
+
+        GameService afterRestart = service(temp);
+        assertEquals("Итог проверки", afterRestart.actionMacros().get(0).name);
+        assertEquals(EventType.CHECK, afterRestart.actionMacros().get(0).trigger);
     }
 
     @Test
