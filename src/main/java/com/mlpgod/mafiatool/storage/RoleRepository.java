@@ -3,6 +3,7 @@ package com.mlpgod.mafiatool.storage;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mlpgod.mafiatool.model.RoleDefinition;
+import com.mlpgod.mafiatool.model.RoleColor;
 import com.mlpgod.mafiatool.model.RolePhase;
 import com.mlpgod.mafiatool.model.RoleTeam;
 import net.fabricmc.loader.api.FabricLoader;
@@ -57,6 +58,7 @@ public final class RoleRepository {
             if (role.id == null || role.id.isBlank()) role.id = UUID.randomUUID().toString();
             if (role.name == null || role.name.isBlank()) role.name = "Новая роль";
             if (role.team == null) role.team = RoleTeam.TOWN;
+            if (role.color == null) role.color = RoleColor.defaultFor(role.team);
             if (role.customTeam == null) role.customTeam = "";
             if (role.description == null) role.description = "";
             if (role.actionPhase == null) role.actionPhase = RolePhase.ANY;
