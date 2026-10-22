@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -40,7 +41,13 @@ public final class MafiaGameScreen extends Screen {
                 case EXCLUDED -> ChatFormatting.RED;
             };
             String roleName = player.role == null ? "Роль не назначена" : player.role.name;
-            Component rowLabel = Component.literal(clip(roleName + " · " + player.name, nameW)).withStyle(nameColor);
+            RoleColor roleColor = player.role == null || player.role.color == null
+                    ? RoleColor.defaultFor(player.role == null ? RoleTeam.TOWN : player.role.team) : player.role.color;
+            String shownRole = clip(roleName, nameW / 2);
+            int playerNameBudget = Math.max(1, nameW / 6 - shownRole.length() - 3);
+            Component rowLabel = Component.literal(shownRole)
+                    .withStyle(style -> style.withColor(TextColor.fromRgb(roleColor.rgb)))
+                    .append(Component.literal(" · " + clip(player.name, playerNameBudget * 6)).withStyle(nameColor));
             addRenderableWidget(Button.builder(rowLabel, b -> {})
                     .bounds(left, y, nameW, 22).build());
             int controlsX = left + nameW + 4;
