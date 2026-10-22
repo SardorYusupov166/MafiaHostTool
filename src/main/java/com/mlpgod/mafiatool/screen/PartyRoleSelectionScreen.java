@@ -1,6 +1,7 @@
 package com.mlpgod.mafiatool.screen;
 
 import com.mlpgod.mafiatool.model.GameRecord;
+import com.mlpgod.mafiatool.model.RoleColor;
 import com.mlpgod.mafiatool.model.RoleSelection;
 import com.mlpgod.mafiatool.service.GameService;
 import net.minecraft.client.Minecraft;
@@ -71,7 +72,8 @@ public final class PartyRoleSelectionScreen extends Screen {
         int left = Math.max(14, width / 2 - 250);
         for (int i = scroll; i < roles.size() && i < scroll + Math.max(1, Math.min(11, (height - 148) / 28)); i++) {
             RoleSelection role = roles.get(i);
-            g.drawString(font, role.role.team + " · " + role.role.actionPhase, left + 5, 90 + (i - scroll) * 28, 0x909090);
+            int color = role.role.color == null ? RoleColor.defaultFor(role.role.team).rgb : role.role.color.rgb;
+            g.drawString(font, role.role.team + " · " + role.role.actionPhase, left + 5, 90 + (i - scroll) * 28, color);
         }
         if (!message.isBlank()) g.drawString(font, message, left + 180, height - 58, 0xFFFFFF);
         super.render(g, x, y, d);
