@@ -127,6 +127,12 @@ public final class GameService {
 
     public void setRole(RoleDefinition role, String name, RoleTeam team, String customTeam,
                         String description, RolePhase phase, int count, boolean enabled) {
+        RoleColor color = role.color == null ? RoleColor.defaultFor(team) : role.color;
+        setRole(role, name, team, customTeam, color, description, phase, count, enabled);
+    }
+
+    public void setRole(RoleDefinition role, String name, RoleTeam team, String customTeam, RoleColor color,
+                        String description, RolePhase phase, int count, boolean enabled) {
         if (name == null || name.isBlank()) throw new IllegalArgumentException("Введите название роли");
         if (count < 0 || count > 50) throw new IllegalArgumentException("Количество должно быть от 0 до 50");
         if (roleCache == null) roleCache = roles.load();
@@ -134,6 +140,7 @@ public final class GameService {
             throw new IllegalArgumentException("Роль с таким названием уже существует");
         role.name = name.trim();
         role.team = Objects.requireNonNull(team);
+        role.color = Objects.requireNonNullElse(color, RoleColor.defaultFor(team));
         role.customTeam = customTeam == null ? "" : customTeam.trim();
         role.description = description == null ? "" : description.trim();
         role.actionPhase = Objects.requireNonNull(phase);
@@ -502,6 +509,7 @@ public final class GameService {
     private RoleSnapshot copy(RoleSnapshot role) {
         RoleSnapshot copy = new RoleSnapshot();
         copy.templateId = role.templateId; copy.name = role.name; copy.team = role.team;
+        copy.color = role.color;
         copy.customTeam = role.customTeam; copy.description = role.description; copy.actionPhase = role.actionPhase;
         return copy;
     }
