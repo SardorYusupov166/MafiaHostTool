@@ -21,6 +21,7 @@ public final class MafiaGameScreen extends Screen {
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
     private final GameRecord game;
     private int playerScroll;
+    private int eventScroll = Integer.MAX_VALUE;
     private String message = "";
 
     public MafiaGameScreen(GameRecord game) { super(Component.literal(game.title)); this.game = game; }
@@ -63,9 +64,26 @@ public final class MafiaGameScreen extends Screen {
 
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
         int actionY = height - 54;
-        int journalWidth = Math.min(112, Math.max(82, width - rightX - 188));
-        addRenderableWidget(Button.builder(Component.literal("Весь журнал"), b -> Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
-                .bounds(rightX + 170, 48, journalWidth, 22).build());
+        int visibleEvents = visibleEvents();
+        eventScroll = Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents));
+        int firstVisibleEvent = Math.max(0, Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents)));
+        for (int i = firstVisibleEvent; i < game.events.size() && i < firstVisibleEvent + visibleEvents; i++) {
+            GameEvent event = game.events.get(i);
+            int eventY = 76 + (i - eventScroll) * 32;
+            if (editable) {
+                addRenderableWidget(Button.builder(Component.literal("Исправить"), b ->
+                                Minecraft.getInstance().setScreen(new EventCorrectionScreen(game, event, this)))
+                        .bounds(width - 86, eventY, 72, 28).build());
+            }
+        }
+        if (game.events.size() > visibleEvents) {
+            addRenderableWidget(Button.builder(Component.literal("▲"), b -> {
+                eventScroll = Math.max(0, eventScroll - 1); rebuildWidgets();
+            }).bounds(width - 44, 48, 22, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("▼"), b -> {
+                eventScroll = Math.min(game.events.size() - visibleEvents, eventScroll + 1); rebuildWidgets();
+            }).bounds(width - 44, height - 78, 22, 20).build());
+        }
         if (editable) {
             addRenderableWidget(Button.builder(Component.literal("+ Действие"), b -> Minecraft.getInstance().setScreen(new EventEntryScreen(game)))
                     .bounds(rightX, actionY, 98, 22).build());
@@ -97,6 +115,23 @@ public final class MafiaGameScreen extends Screen {
         return switch (status) { case ALIVE -> "Жив"; case DEAD -> "Мёртв"; case EXCLUDED -> "Исключён"; };
     }
 
+    private int visibleEvents() {
+        return Math.max(1, (height - 162) / 32);
+    }
+
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        int left = 14;
+        int panelW = Math.min(470, width / 2 + 20);
+        int rightX = Math.max(width / 2 + 14, left + panelW + 12);
+        if (mouseX >= rightX && game.events.size() > visibleEvents()) {
+            int maximum = Math.max(0, game.events.size() - visibleEvents());
+            eventScroll = Math.max(0, Math.min(maximum, eventScroll - (int) Math.signum(verticalAmount)));
+            rebuildWidgets();
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, width, height, 0xA0101010);
         g.drawCenteredString(font, game.title + (game.status == GameStatus.FINISHED ? " · архив" : " · " + game.phase), width / 2, 16, 0xFFFFFF);
@@ -105,14 +140,22 @@ public final class MafiaGameScreen extends Screen {
         int panelW = Math.min(470, width / 2 + 20);
         g.drawString(font, "Участник · роль · статус", left, 55, 0xFFFFFF);
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
-        g.drawString(font, "История действий", rightX, 55, 0xFFFFFF);
-        int start = Math.max(0, game.events.size() - 6);
-        for (int i = start; i < game.events.size(); i++) {
+        g.drawString(font, "История действий · " + game.events.size(), rightX, 55, 0xFFFFFF);
+        int visibleEvents = visibleEvents();
+        int start = Math.max(0, Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents)));
+        int rightPadding = game.status == GameStatus.FINISHED
+                ? (game.events.size() > visibleEvents ? 52 : 24) : 104;
+        int eventTextWidth = Math.max(40, width - rightX - rightPadding);
+        if (game.events.isEmpty()) g.drawString(font, "Событий пока нет", rightX, 80, 0x909090);
+        for (int i = start; i < game.events.size() && i < start + visibleEvents; i++) {
             GameEvent event = game.events.get(i);
-            int y = 75 + (i - start) * 25;
-            String text = TIME.format(Instant.ofEpochMilli(event.timestamp)) + " · " + event.phase + " · " + event.actorLabel + " " + event.description;
-            g.drawString(font, clip(text, width - rightX - 20), rightX, y, 0xD0D0D0);
-            if (!event.result.isBlank()) g.drawString(font, clip("Результат: " + event.result, width - rightX - 20), rightX, y + 11, 0x909090);
+            int y = 77 + (i - start) * 32;
+            String target = event.targetLabel == null || event.targetLabel.isBlank() ? "" : " → " + event.targetLabel;
+            String first = TIME.format(Instant.ofEpochMilli(event.timestamp)) + " · " + event.phase + " · " + event.actorLabel + target;
+            String second = event.description == null ? "" : event.description;
+            if (event.result != null && !event.result.isBlank()) second += " · " + event.result;
+            g.drawString(font, clip(first, eventTextWidth), rightX, y, 0xD0D0D0);
+            if (!second.isBlank()) g.drawString(font, clip(second, eventTextWidth), rightX, y + 12, 0x909090);
         }
         if (!message.isBlank()) g.drawString(font, message, rightX, height - 78, 0xFFFFFF);
         super.render(g, mouseX, mouseY, delta);
