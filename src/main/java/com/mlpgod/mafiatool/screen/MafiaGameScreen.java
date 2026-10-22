@@ -39,7 +39,9 @@ public final class MafiaGameScreen extends Screen {
                 case DEAD -> ChatFormatting.DARK_GRAY;
                 case EXCLUDED -> ChatFormatting.RED;
             };
-            addRenderableWidget(Button.builder(Component.literal(player.name).withStyle(nameColor), b -> {})
+            String roleName = player.role == null ? "Роль не назначена" : player.role.name;
+            Component rowLabel = Component.literal(clip(roleName + " · " + player.name, nameW)).withStyle(nameColor);
+            addRenderableWidget(Button.builder(rowLabel, b -> {})
                     .bounds(left, y, nameW, 22).build());
             int controlsX = left + nameW + 4;
             if (editable) {
@@ -99,13 +101,6 @@ public final class MafiaGameScreen extends Screen {
         int left = 14;
         int panelW = Math.min(470, width / 2 + 20);
         g.drawString(font, "Участник · роль · статус", left, 55, 0xFFFFFF);
-        for (int i = playerScroll; i < game.players.size() && i < playerScroll + Math.max(1, Math.min(12, (height - 182) / 26)); i++) {
-            GamePlayer p = game.players.get(i);
-            int y = 76 + (i - playerScroll) * 26;
-            String role = p.role == null ? "Роль не назначена" : p.role.name + " · " + team(p.role);
-            int nameW = Math.max(100, panelW - (game.status == GameStatus.FINISHED ? 84 : 242));
-            g.drawString(font, clip(role, nameW - 10), left + nameW + 4, y + 6, p.status == PlayerStatus.ALIVE ? 0xB5DDAA : 0x888888);
-        }
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
         g.drawString(font, "Последние события", rightX, 55, 0xFFFFFF);
         int start = Math.max(0, game.events.size() - 6);
@@ -120,9 +115,6 @@ public final class MafiaGameScreen extends Screen {
         super.render(g, mouseX, mouseY, delta);
     }
 
-    private String team(RoleSnapshot role) { return role.team == null ? "" : role.team == RoleTeam.CUSTOM ? role.customTeam : switch (role.team) {
-        case TOWN -> "Мирные"; case MAFIA -> "Мафия"; case NEUTRAL -> "Нейтральные"; case CUSTOM -> role.customTeam;
-    }; }
     private String clip(String value, int width) {
         int max = Math.max(8, width / 6);
         return value.length() > max ? value.substring(0, max - 1) + "…" : value;
