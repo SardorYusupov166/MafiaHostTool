@@ -34,7 +34,7 @@ public final class MafiaGameScreen extends Screen {
         for (int i = playerScroll; i < game.players.size() && i < playerScroll + rows; i++) {
             GamePlayer player = game.players.get(i);
             int y = 74 + (i - playerScroll) * 26;
-            int nameW = Math.max(100, panelW - (editable ? 242 : 84));
+            int nameW = Math.max(100, panelW - (editable ? 174 : 24));
             ChatFormatting nameColor = switch (player.status) {
                 case ALIVE -> ChatFormatting.GREEN;
                 case DEAD -> ChatFormatting.DARK_GRAY;
