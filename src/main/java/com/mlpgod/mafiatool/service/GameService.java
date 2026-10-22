@@ -2,6 +2,7 @@ package com.mlpgod.mafiatool.service;
 
 import com.mlpgod.mafiatool.model.*;
 import com.mlpgod.mafiatool.storage.GameRepository;
+import com.mlpgod.mafiatool.storage.MacroRepository;
 import com.mlpgod.mafiatool.storage.RoleRepository;
 
 import java.security.SecureRandom;
@@ -11,19 +12,26 @@ import java.util.*;
 public final class GameService {
     private final GameRepository games;
     private final RoleRepository roles;
+    private final MacroRepository macros;
     private final SecureRandom random = new SecureRandom();
     private List<GameRecord> cache;
     private List<RoleDefinition> roleCache;
+    private List<ActionMacro> macroCache;
 
     private static final class Holder {
-        private static final GameService INSTANCE = new GameService(new GameRepository(), new RoleRepository());
+        private static final GameService INSTANCE = new GameService(new GameRepository(), new RoleRepository(), new MacroRepository());
     }
 
     public static GameService get() { return Holder.INSTANCE; }
 
     public GameService(GameRepository games, RoleRepository roles) {
+        this(games, roles, new MacroRepository());
+    }
+
+    public GameService(GameRepository games, RoleRepository roles, MacroRepository macros) {
         this.games = games;
         this.roles = roles;
+        this.macros = macros;
     }
 
     public List<GameRecord> allGames() {
@@ -50,6 +58,55 @@ public final class GameService {
     }
 
     public void saveRoleTemplates() { roles.save(roleTemplates()); }
+
+    public List<ActionMacro> actionMacros() {
+        if (macroCache == null) macroCache = macros.load();
+        return List.copyOf(macroCache);
+    }
+
+    public ActionMacro saveMacro(ActionMacro macro) {
+        if (macro == null) throw new IllegalArgumentException("Макрос не задан");
+        if (macro.name == null || macro.name.isBlank()) throw new IllegalArgumentException("Введите название макроса");
+        if (macro.trigger == null || macro.effect == null) throw new IllegalArgumentException("Выберите событие и действие макроса");
+        if (macro.effect == MacroEffect.MARK_TARGET_DEAD && (macro.condition == null || macro.condition.isBlank()))
+            throw new IllegalArgumentException("Для автоматической смерти задайте условие в результате события, например: убит");
+        if (macro.effect == MacroEffect.MARK_TARGET_DEAD && macro.trigger != EventType.ACTION
+                && macro.trigger != EventType.KILL_ATTEMPT && macro.trigger != EventType.CUSTOM_ACTION)
+            throw new IllegalArgumentException("Отметить погибшей можно только цель действия");
+        if (macro.effect == MacroEffect.ADVANCE_PHASE && macro.trigger == EventType.PHASE_CHANGED)
+            throw new IllegalArgumentException("Макрос не может переключать фазу в ответ на смену фазы");
+        if (macroCache == null) macroCache = macros.load();
+        String name = macro.name.trim();
+        if (macroCache.stream().anyMatch(existing -> !existing.id.equals(macro.id) && existing.name.equalsIgnoreCase(name)))
+            throw new IllegalArgumentException("Макрос с таким названием уже существует");
+        ActionMacro saved = macro.copy();
+        saved.name = name;
+        saved.condition = saved.condition == null ? "" : saved.condition.trim();
+        saved.textTemplate = saved.textTemplate == null ? "" : saved.textTemplate.trim();
+        int index = -1;
+        for (int i = 0; i < macroCache.size(); i++) if (macroCache.get(i).id.equals(saved.id)) { index = i; break; }
+        if (index < 0) macroCache.add(saved); else macroCache.set(index, saved);
+        macros.save(macroCache);
+        return saved;
+    }
+
+    public void setMacroEnabled(String macroId, boolean enabled) {
+        ActionMacro macro = macroById(macroId);
+        macro.enabled = enabled;
+        macros.save(macroCache);
+    }
+
+    public void deleteMacro(String macroId) {
+        if (macroCache == null) macroCache = macros.load();
+        macroCache.removeIf(macro -> macro.id.equals(macroId));
+        macros.save(macroCache);
+    }
+
+    private ActionMacro macroById(String id) {
+        if (macroCache == null) macroCache = macros.load();
+        return macroCache.stream().filter(macro -> macro.id.equals(id)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Макрос не найден"));
+    }
 
     public void setRoleTemplateEnabled(RoleDefinition role, boolean enabled) {
         RoleDefinition stored = roleTemplates().stream().filter(r -> r.id.equals(role.id)).findFirst()
@@ -470,7 +527,70 @@ public final class GameService {
 
     private void addEvent(GameRecord game, EventType type, String actorId, String targetId,
                           String actor, String target, String description, String result) {
-        game.events.add(new GameEvent(game.phase, type, actorId, targetId, actor, target, description, result));
+        GameEvent event = new GameEvent(game.phase, type, actorId, targetId, actor, target, description, result);
+        game.events.add(event);
+        applyMacros(game, event);
+    }
+
+    private void applyMacros(GameRecord game, GameEvent trigger) {
+        for (ActionMacro macro : actionMacros()) {
+            if (!macro.enabled || macro.trigger != trigger.type || !matchesCondition(macro, trigger)) continue;
+            String text = expandMacro(macro.textTemplate, macro, trigger);
+            switch (macro.effect) {
+                case ADD_LOG_NOTE -> {
+                    String note = text.isBlank() ? "Выполнен пользовательский макрос" : text;
+                    GameEvent generated = new GameEvent(trigger.phase, EventType.CUSTOM_ACTION,
+                            trigger.actorId, trigger.targetId, trigger.actorLabel, trigger.targetLabel,
+                            note, "Макрос: " + macro.name);
+                    generated.originalEventId = trigger.id;
+                    game.events.add(generated);
+                }
+                case MARK_TARGET_DEAD -> applyDeathMacro(game, macro, trigger, text);
+                case ADVANCE_PHASE -> applyPhaseMacro(game, macro, trigger, text);
+            }
+        }
+    }
+
+    private boolean matchesCondition(ActionMacro macro, GameEvent event) {
+        if (macro.condition == null || macro.condition.isBlank()) return true;
+        String text = ((event.description == null ? "" : event.description) + " "
+                + (event.result == null ? "" : event.result)).toLowerCase(Locale.ROOT);
+        return text.contains(macro.condition.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private String expandMacro(String template, ActionMacro macro, GameEvent event) {
+        if (template == null) return "";
+        return template.replace("{macro}", macro.name)
+                .replace("{actor}", event.actorLabel == null ? "" : event.actorLabel)
+                .replace("{target}", event.targetLabel == null ? "" : event.targetLabel)
+                .replace("{phase}", event.phase == null ? "" : event.phase.toString())
+                .replace("{description}", event.description == null ? "" : event.description)
+                .replace("{result}", event.result == null ? "" : event.result);
+    }
+
+    private void applyDeathMacro(GameRecord game, ActionMacro macro, GameEvent trigger, String reason) {
+        if (trigger.targetId == null || game.status == GameStatus.FINISHED) return;
+        GamePlayer target = game.players.stream().filter(player -> player.id.equals(trigger.targetId)).findFirst().orElse(null);
+        if (target == null || target.status != PlayerStatus.ALIVE) return;
+        target.status = PlayerStatus.DEAD;
+        String result = reason.isBlank() ? "Автоматически отмечен погибшим макросом «" + macro.name + "»" : reason;
+        GameEvent death = new GameEvent(game.phase, EventType.PLAYER_DIED, trigger.actorId, target.id,
+                trigger.actorLabel == null ? "Исполнитель не указан" : trigger.actorLabel, target.name,
+                "Игрок отмечен погибшим макросом «" + macro.name + "»", result);
+        death.originalEventId = trigger.id;
+        game.events.add(death);
+    }
+
+    private void applyPhaseMacro(GameRecord game, ActionMacro macro, GameEvent trigger, String note) {
+        if (game.status != GameStatus.ACTIVE) return;
+        GamePhase previous = copy(game.phase);
+        if (game.phase.kind == PhaseKind.NIGHT) game.phase = new GamePhase(PhaseKind.DAY, game.phase.number);
+        else if (game.phase.kind == PhaseKind.DAY) game.phase = new GamePhase(PhaseKind.NIGHT, game.phase.number + 1);
+        else return;
+        GameEvent phaseChange = new GameEvent(game.phase, EventType.PHASE_CHANGED, trigger.actorId, null,
+                "Макрос: " + macro.name, "", previous + " → " + game.phase, note);
+        phaseChange.originalEventId = trigger.id;
+        game.events.add(phaseChange);
     }
 
     private void addCorrection(GameRecord game, String originalId, String result, String reason) {
