@@ -314,6 +314,10 @@ public final class GameService {
         store(game);
     }
 
+    public void setPlayerStatus(GameRecord game, String playerId, PlayerStatus status, String reason) {
+        setPlayerStatus(game, playerId, status, null, reason);
+    }
+
     public void setPlayerStatus(GameRecord game, String playerId, PlayerStatus status, String actorId, String reason) {
         requireEditable(game);
         GamePlayer player = player(game, playerId);
