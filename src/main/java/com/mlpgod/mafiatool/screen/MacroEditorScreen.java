@@ -11,6 +11,9 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class MacroEditorScreen extends Screen {
     private static final EventType[] TRIGGERS = {
             EventType.ACTION, EventType.KILL_ATTEMPT, EventType.CHECK, EventType.TREATMENT,
@@ -22,6 +25,7 @@ public final class MacroEditorScreen extends Screen {
     private final Screen returnTo;
     private int triggerIndex;
     private int effectIndex;
+    private int triggerScroll;
     private EditBox name;
     private EditBox condition;
     private EditBox textTemplate;
@@ -36,27 +40,51 @@ public final class MacroEditorScreen extends Screen {
     }
 
     @Override protected void init() {
-        int left = width / 2 - 190;
-        int fieldWidth = 380;
-        name = field(left, 78, fieldWidth, "Название макроса", macro.name, 50);
-        addRenderableWidget(Button.builder(Component.literal("Событие: " + eventLabel()), b -> {
-            triggerIndex = (triggerIndex + 1) % TRIGGERS.length;
-            b.setMessage(Component.literal("Событие: " + eventLabel()));
-        }).bounds(left, 108, fieldWidth, 22).build());
-        condition = field(left, 138, fieldWidth, "Условие в описании или результате (необязательно)", macro.condition, 100);
-        addRenderableWidget(Button.builder(Component.literal("Что сделать: " + effectLabel()), b -> {
-            effectIndex = (effectIndex + 1) % EFFECTS.length;
-            b.setMessage(Component.literal("Что сделать: " + effectLabel()));
-        }).bounds(left, 168, fieldWidth, 22).build());
-        textTemplate = field(left, 198, fieldWidth, "Текст шаблона", macro.textTemplate, 240);
+        int left = 16;
+        int available = Math.max(300, width - 32);
+        int triggerWidth = available * 34 / 100;
+        int effectWidth = available * 26 / 100;
+        int gap = 8;
+        int effectX = left + triggerWidth + gap;
+        int fieldsX = effectX + effectWidth + gap;
+        int fieldsWidth = Math.max(120, left + available - fieldsX);
+        int visibleTriggers = visibleTriggers();
+        triggerScroll = Math.max(0, Math.min(triggerScroll, TRIGGERS.length - visibleTriggers));
+        List<Button> triggerButtons = new ArrayList<>();
+        for (int row = 0; row < visibleTriggers; row++) {
+            int option = triggerScroll + row;
+            Button button = Button.builder(Component.literal(triggerOptionLabel(option, triggerWidth)), b -> {
+                triggerIndex = option;
+                for (int i = 0; i < triggerButtons.size(); i++)
+                    triggerButtons.get(i).setMessage(Component.literal(triggerOptionLabel(triggerScroll + i, triggerWidth)));
+            }).bounds(left, 74 + row * 24, triggerWidth, 22).build();
+            addRenderableWidget(button);
+            triggerButtons.add(button);
+        }
+        List<Button> effectButtons = new ArrayList<>();
+        for (int i = 0; i < EFFECTS.length; i++) {
+            int option = i;
+            Button button = Button.builder(Component.literal(effectOptionLabel(option)), b -> {
+                effectIndex = option;
+                for (int j = 0; j < effectButtons.size(); j++)
+                    effectButtons.get(j).setMessage(Component.literal(effectOptionLabel(j)));
+            }).bounds(effectX, 74 + i * 24, effectWidth, 22).build();
+            addRenderableWidget(button);
+            effectButtons.add(button);
+        }
+
+        name = field(fieldsX, 74, fieldsWidth, "Название макроса", macro.name, 50);
+        condition = field(fieldsX, 124, fieldsWidth, "Фраза условия (необязательно)", macro.condition, 100);
+        textTemplate = field(fieldsX, 174, fieldsWidth, "Текст шаблона", macro.textTemplate, 240);
         addRenderableWidget(Button.builder(Component.literal("Макрос включён: " + (macro.enabled ? "да" : "нет")), b -> {
             macro.enabled = !macro.enabled;
             b.setMessage(Component.literal("Макрос включён: " + (macro.enabled ? "да" : "нет")));
-        }).bounds(left, 228, fieldWidth, 22).build());
+        }).bounds(fieldsX, 204, fieldsWidth, 22).build());
+
         int bottom = height - 42;
-        addRenderableWidget(Button.builder(Component.literal("Сохранить"), b -> save()).bounds(left, bottom, 110, 24).build());
+        addRenderableWidget(Button.builder(Component.literal("Сохранить"), b -> save()).bounds(fieldsX, bottom, 110, 24).build());
         addRenderableWidget(Button.builder(Component.literal("Отмена"), b -> Minecraft.getInstance().setScreen(returnTo))
-                .bounds(left + 118, bottom, 90, 24).build());
+                .bounds(fieldsX + 118, bottom, 90, 24).build());
     }
 
     private EditBox field(int x, int y, int w, String hint, String value, int max) {
@@ -68,11 +96,12 @@ public final class MacroEditorScreen extends Screen {
         return box;
     }
 
+    private int visibleTriggers() { return Math.max(4, Math.min(TRIGGERS.length, (height - 150) / 24)); }
     private EventType trigger() { return TRIGGERS[triggerIndex]; }
     private MacroEffect effect() { return EFFECTS[effectIndex]; }
 
-    private String eventLabel() {
-        return switch (trigger()) {
+    private String eventLabel(EventType event) {
+        return switch (event) {
             case ACTION -> "Действие";
             case KILL_ATTEMPT -> "Попытка убийства";
             case CHECK -> "Проверка";
@@ -83,16 +112,28 @@ public final class MacroEditorScreen extends Screen {
             case PLAYER_DIED -> "Смерть игрока";
             case PLAYER_EXCLUDED -> "Исключение игрока";
             case PHASE_CHANGED -> "Смена фазы";
-            default -> trigger().name();
+            default -> event.name();
         };
     }
 
-    private String effectLabel() {
-        return switch (effect()) {
-            case ADD_LOG_NOTE -> "добавить запись в журнал";
-            case MARK_TARGET_DEAD -> "отметить цель погибшей";
-            case ADVANCE_PHASE -> "переключить день / ночь";
+    private String effectLabel(MacroEffect macroEffect) {
+        return switch (macroEffect) {
+            case ADD_LOG_NOTE -> "Добавить запись";
+            case MARK_TARGET_DEAD -> "Отметить цель погибшей";
+            case ADVANCE_PHASE -> "Переключить фазу";
         };
+    }
+
+    private String triggerOptionLabel(int option, int pixelWidth) {
+        String prefix = triggerIndex == option ? "[x] " : "[ ] ";
+        int chars = Math.max(8, pixelWidth / 6 - prefix.length());
+        String label = eventLabel(TRIGGERS[option]);
+        if (label.length() > chars) label = label.substring(0, chars - 1) + "…";
+        return prefix + label;
+    }
+
+    private String effectOptionLabel(int option) {
+        return (effectIndex == option ? "[x] " : "[ ] ") + effectLabel(EFFECTS[option]);
     }
 
     private void save() {
@@ -109,15 +150,43 @@ public final class MacroEditorScreen extends Screen {
         }
     }
 
+    @Override public boolean mouseScrolled(double x, double y, double horizontal, double vertical) {
+        int left = 16;
+        int triggerWidth = Math.max(300, width - 32) * 34 / 100;
+        int maxScroll = TRIGGERS.length - visibleTriggers();
+        if (x >= left && x < left + triggerWidth && y >= 74 && y < 74 + visibleTriggers() * 24 && maxScroll > 0) {
+            triggerScroll = Math.max(0, Math.min(maxScroll, triggerScroll - (int) Math.signum(vertical)));
+            String nameValue = name == null ? "" : name.getValue();
+            String conditionValue = condition == null ? "" : condition.getValue();
+            String templateValue = textTemplate == null ? "" : textTemplate.getValue();
+            rebuildWidgets();
+            if (name != null) name.setValue(nameValue);
+            if (condition != null) condition.setValue(conditionValue);
+            if (textTemplate != null) textTemplate.setValue(templateValue);
+            return true;
+        }
+        return super.mouseScrolled(x, y, horizontal, vertical);
+    }
+
     @Override public void render(GuiGraphics g, int x, int y, float delta) {
         g.fill(0, 0, width, height, 0xA0101010);
-        g.drawCenteredString(font, "Редактор макроса", width / 2, 22, 0xFFFFFF);
-        int left = width / 2 - 190;
-        g.drawString(font, "Название", left, 66, 0xC0C0C0);
-        g.drawString(font, "Если событие содержит эту фразу — макрос запускается", left, 128, 0xC0C0C0);
-        g.drawString(font, "Текст для записи или причина смерти (для выбранного эффекта)", left, 188, 0xC0C0C0);
-        g.drawCenteredString(font, "Подстановки: {actor} {target} {phase} {description} {result} {macro}", width / 2, 260, 0xA0A0A0);
-        g.drawCenteredString(font, "Для смерти цели условие обязательно, чтобы не отметить спасённого игрока погибшим.", width / 2, 276, 0xFFCC88);
+        int left = 16;
+        int available = Math.max(300, width - 32);
+        int triggerWidth = available * 34 / 100;
+        int effectWidth = available * 26 / 100;
+        int fieldsX = left + triggerWidth + 8 + effectWidth + 8;
+        g.drawCenteredString(font, "Редактор макроса", width / 2, 20, 0xFFFFFF);
+        g.drawString(font, "Запускать при", left, 54, 0xFFFFFF);
+        g.drawString(font, "Эффект", left + triggerWidth + 8, 54, 0xFFFFFF);
+        g.drawString(font, "Параметры", fieldsX, 54, 0xFFFFFF);
+        if (TRIGGERS.length > visibleTriggers()) g.drawString(font, "Колёсико — прокрутка", left, 64, 0x909090);
+        g.drawString(font, "Условие проверяет описание и результат события", fieldsX, 114, 0xA0A0A0);
+        g.drawString(font, "Для смерти цели условие обязательно", fieldsX, 164, 0xFFCC88);
+        g.drawString(font, "Подстановки в тексте:", fieldsX, 236, 0xC0C0C0);
+        g.drawString(font, "{actor} {target} {phase}", fieldsX, 250, 0xA0A0A0);
+        g.drawString(font, "{description} {result} {macro}", fieldsX, 262, 0xA0A0A0);
+        if (effect() == MacroEffect.MARK_TARGET_DEAD)
+            g.drawString(font, "Цель погибнет только при совпадении условия.", fieldsX, 282, 0xFFCC88);
         if (!error.isBlank()) g.drawCenteredString(font, error, width / 2, height - 58, 0xFFFF8888);
         super.render(g, x, y, delta);
     }
