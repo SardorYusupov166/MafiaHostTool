@@ -184,6 +184,26 @@ class GameServiceTest {
     }
 
     @Test
+    void roleColorsDefaultByTeamAndCustomColorsAreCopiedIntoGameRoles() {
+        GameService service = service(temp);
+        RoleDefinition mafia = service.roleTemplates().stream()
+                .filter(role -> role.team == RoleTeam.MAFIA).findFirst().orElseThrow();
+        RoleDefinition town = service.roleTemplates().stream()
+                .filter(role -> role.team == RoleTeam.TOWN).findFirst().orElseThrow();
+        assertEquals(RoleColor.RED, mafia.color);
+        assertEquals(RoleColor.GREEN, town.color);
+
+        service.setRole(mafia, mafia.name, mafia.team, mafia.customTeam, RoleColor.PURPLE,
+                mafia.description, mafia.actionPhase, mafia.count, mafia.enabled);
+        GameRecord game = service.createGame("Colored role snapshot");
+        service.addPlayers(game, List.of("A", "B", "C", "D"));
+        service.distributeRoles(game);
+
+        assertTrue(game.players.stream().filter(player -> player.role.name.equals(mafia.name))
+                .allMatch(player -> player.role.color == RoleColor.PURPLE));
+    }
+
+    @Test
     void playerHistoryIncludesCorrectionsToTheirEvents() {
         GameService service = service(temp);
         GameRecord game = preparedFourPlayerGame(service);
