@@ -306,16 +306,19 @@ public final class GameService {
         if (type != EventType.ACTION && type != EventType.KILL_ATTEMPT && type != EventType.CHECK
                 && type != EventType.TREATMENT && type != EventType.CUSTOM_ACTION)
             throw new IllegalArgumentException("Для этого типа используйте специальную команду");
-        GamePlayer actor = actorId == null ? null : activePlayer(game, actorId);
+        if (actorId == null) throw new IllegalArgumentException("Выберите игрока, который выполнил действие");
+        GamePlayer actor = activePlayer(game, actorId);
         GamePlayer target = targetId == null ? null : activePlayer(game, targetId);
-        addEvent(game, type, actor == null ? null : actor.id, target == null ? null : target.id,
-                actor == null ? "Ведущий" : actor.name, target == null ? "" : target.name, description, result);
+        addEvent(game, type, actor.id, target == null ? null : target.id,
+                actor.name, target == null ? "" : target.name, description, result);
         store(game);
     }
 
-    public void setPlayerStatus(GameRecord game, String playerId, PlayerStatus status, String reason) {
+    public void setPlayerStatus(GameRecord game, String playerId, PlayerStatus status, String actorId, String reason) {
         requireEditable(game);
         GamePlayer player = player(game, playerId);
+        GamePlayer actor = status == PlayerStatus.DEAD && actorId != null ? activePlayer(game, actorId) : null;
+        if (actor != null && actor.id.equals(player.id)) throw new IllegalArgumentException("Игрок не может быть исполнителем собственного выбывания");
         PlayerStatus old = player.status;
         if (old == status) return;
         player.status = status;
@@ -324,7 +327,8 @@ public final class GameService {
             case EXCLUDED -> EventType.PLAYER_EXCLUDED;
             case ALIVE -> old == PlayerStatus.DEAD ? EventType.PLAYER_REVIVED : EventType.PLAYER_RESTORED;
         };
-        addEvent(game, type, null, player.id, "Ведущий", player.name,
+        addEvent(game, type, actor == null ? null : actor.id, player.id,
+                actor != null ? actor.name : status == PlayerStatus.DEAD ? "Исполнитель не указан" : "Ведущий", player.name,
                 status == PlayerStatus.DEAD ? "Игрок отмечен погибшим" : status == PlayerStatus.EXCLUDED ? "Игрок исключён из партии" : "Игрок возвращён в партию",
                 reason);
         store(game);
