@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.List;
 
@@ -32,8 +33,11 @@ public final class RoleSettingsScreen extends Screen {
             int y = 64 + (i - scroll) * rowHeight;
             int toggleW = 74, editW = 90, deleteW = 30;
             int nameW = Math.max(100, rowWidth - toggleW - editW - deleteW - 12);
-            addRenderableWidget(Button.builder(Component.literal((role.enabled ? "[Вкл] " : "[Выкл] ") + role.name + " ×" + role.count),
-                    b -> { service.setRoleTemplateEnabled(role, !role.enabled); b.setMessage(Component.literal((role.enabled ? "[Вкл] " : "[Выкл] ") + role.name + " ×" + role.count)); })
+            int color = role.color == null ? com.mlpgod.mafiatool.model.RoleColor.defaultFor(role.team).rgb : role.color.rgb;
+            addRenderableWidget(Button.builder(Component.literal((role.enabled ? "[Вкл] " : "[Выкл] ") + role.name + " ×" + role.count)
+                            .withStyle(style -> style.withColor(TextColor.fromRgb(color))),
+                    b -> { service.setRoleTemplateEnabled(role, !role.enabled); b.setMessage(Component.literal((role.enabled ? "[Вкл] " : "[Выкл] ") + role.name + " ×" + role.count)
+                            .withStyle(style -> style.withColor(TextColor.fromRgb(color)))); })
                     .bounds(left, y, nameW, 24).build());
             addRenderableWidget(Button.builder(Component.literal("Изменить"), b -> Minecraft.getInstance().setScreen(new RoleEditorScreen(role, this)))
                     .bounds(left + nameW + 4, y, editW, 24).build());
@@ -71,7 +75,8 @@ public final class RoleSettingsScreen extends Screen {
             RoleDefinition role = roles.get(i);
             int y = 64 + (i - scroll) * 38;
             String team = role.team == null ? "" : role.team.name();
-            g.drawString(font, team + (role.description.isBlank() ? "" : " · " + role.description), left + 5, y + 26, 0x909090);
+            int color = role.color == null ? com.mlpgod.mafiatool.model.RoleColor.defaultFor(role.team).rgb : role.color.rgb;
+            g.drawString(font, team + (role.description.isBlank() ? "" : " · " + role.description), left + 5, y + 26, color);
         }
         if (!status.isBlank()) g.drawString(font, status, left, height - 65, 0xFFFFFF);
         super.render(g, mouseX, mouseY, delta);
