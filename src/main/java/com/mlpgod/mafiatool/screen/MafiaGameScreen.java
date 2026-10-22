@@ -59,28 +59,24 @@ public final class MafiaGameScreen extends Screen {
                 addRenderableWidget(Button.builder(Component.literal("Ник"), b -> Minecraft.getInstance().setScreen(new RenamePlayerScreen(game, player, this)))
                         .bounds(controlsX + 122, y, 44, 22).build());
             }
-            addRenderableWidget(Button.builder(Component.literal("История"), b -> Minecraft.getInstance().setScreen(new EventLogScreen(game, player.id, this)))
-                    .bounds(controlsX + (editable ? 170 : 0), y, 70, 22).build());
         }
 
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
         int actionY = height - 54;
+        int journalWidth = Math.min(112, Math.max(82, width - rightX - 188));
+        addRenderableWidget(Button.builder(Component.literal("Весь журнал"), b -> Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
+                .bounds(rightX + 170, 48, journalWidth, 22).build());
         if (editable) {
             addRenderableWidget(Button.builder(Component.literal("+ Действие"), b -> Minecraft.getInstance().setScreen(new EventEntryScreen(game)))
                     .bounds(rightX, actionY, 98, 22).build());
-            addRenderableWidget(Button.builder(Component.literal("Журнал"), b -> Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
-                    .bounds(rightX + 104, actionY, 78, 22).build());
             if (game.phase.kind == PhaseKind.DAY) addRenderableWidget(Button.builder(Component.literal("Голосование"), b -> Minecraft.getInstance().setScreen(new VotingScreen(game)))
-                    .bounds(rightX + 188, actionY, 100, 22).build());
+                    .bounds(rightX + 104, actionY, 100, 22).build());
             addRenderableWidget(Button.builder(Component.literal("Сменить фазу"), b -> advance())
                     .bounds(rightX, actionY - 30, 112, 22).build());
             addRenderableWidget(Button.builder(Component.literal("Исправить фазу"), b -> Minecraft.getInstance().setScreen(new PhaseCorrectionScreen(game, this)))
                     .bounds(rightX + 118, actionY - 30, 120, 22).build());
             addRenderableWidget(Button.builder(Component.literal("Завершить"), b -> Minecraft.getInstance().setScreen(new FinishGameScreen(game)))
                     .bounds(rightX + 244, actionY - 30, 88, 22).build());
-        } else {
-            addRenderableWidget(Button.builder(Component.literal("Журнал партии"), b -> Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
-                    .bounds(rightX, actionY, 132, 22).build());
         }
         addRenderableWidget(Button.builder(Component.literal("К списку партий"), b -> Minecraft.getInstance().setScreen(new MafiaGamesScreen()))
                 .bounds(width - 146, height - 30, 128, 22).build());
@@ -109,7 +105,7 @@ public final class MafiaGameScreen extends Screen {
         int panelW = Math.min(470, width / 2 + 20);
         g.drawString(font, "Участник · роль · статус", left, 55, 0xFFFFFF);
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
-        g.drawString(font, "Последние события", rightX, 55, 0xFFFFFF);
+        g.drawString(font, "История действий", rightX, 55, 0xFFFFFF);
         int start = Math.max(0, game.events.size() - 6);
         for (int i = start; i < game.events.size(); i++) {
             GameEvent event = game.events.get(i);
