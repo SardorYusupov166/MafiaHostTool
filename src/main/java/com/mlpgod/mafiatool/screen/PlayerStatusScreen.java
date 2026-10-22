@@ -12,12 +12,26 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.network.chat.Component;
 
+import java.util.List;
+
 public final class PlayerStatusScreen extends Screen {
     private final GameRecord game; private final GamePlayer player;
+    private final List<GamePlayer> possibleActors;
+    private int actorIndex = -1;
     private EditBox reason; private String error = "";
-    public PlayerStatusScreen(GameRecord game, GamePlayer player) { super(Component.literal("Статус игрока")); this.game = game; this.player = player; }
+    public PlayerStatusScreen(GameRecord game, GamePlayer player) {
+        super(Component.literal("Статус игрока"));
+        this.game = game;
+        this.player = player;
+        this.possibleActors = game.players.stream()
+                .filter(p -> p.status == PlayerStatus.ALIVE && !p.id.equals(player.id)).toList();
+    }
     @Override protected void init() {
         int left = width / 2 - 160;
+        addRenderableWidget(Button.builder(Component.literal("Кто совершил действие: " + actorLabel()), b -> {
+            actorIndex = possibleActors.isEmpty() || actorIndex >= possibleActors.size() - 1 ? -1 : actorIndex + 1;
+            b.setMessage(Component.literal("Кто совершил действие: " + actorLabel()));
+        }).bounds(left, height / 2 - 64, 320, 22).build());
         reason = new EditBox(font, left, height / 2 - 34, 320, 20, Component.literal("Причина"));
         reason.setHint(Component.literal("Причина или пояснение (необязательно)")); reason.setMaxLength(120); addRenderableWidget(reason);
         addRenderableWidget(Button.builder(Component.literal("Жив"), b -> set(PlayerStatus.ALIVE)).bounds(left, height / 2, 76, 22).build());
@@ -36,11 +50,16 @@ public final class PlayerStatusScreen extends Screen {
         apply(status);
     }
     private void apply(PlayerStatus status) {
-        try { GameService.get().setPlayerStatus(game, player.id, status, reason.getValue()); Minecraft.getInstance().setScreen(new MafiaGameScreen(game)); }
+        try {
+            String actorId = status == PlayerStatus.DEAD && actorIndex >= 0 ? possibleActors.get(actorIndex).id : null;
+            GameService.get().setPlayerStatus(game, player.id, status, actorId, reason.getValue());
+            Minecraft.getInstance().setScreen(new MafiaGameScreen(game));
+        }
         catch (Exception e) { error = e.getMessage(); }
     }
+    private String actorLabel() { return actorIndex < 0 ? "не выбран" : possibleActors.get(actorIndex).name; }
     @Override public void render(GuiGraphics g, int x, int y, float d) {
-        g.fill(0, 0, width, height, 0xA0101010); g.drawCenteredString(font, "Статус: " + player.name, width / 2, height / 2 - 64, 0xFFFFFF);
+        g.fill(0, 0, width, height, 0xA0101010); g.drawCenteredString(font, "Статус: " + player.name, width / 2, height / 2 - 90, 0xFFFFFF);
         if (!error.isBlank()) g.drawCenteredString(font, error, width / 2, height / 2 + 32, 0xFF8888); super.render(g, x, y, d);
     }
     @Override public boolean isPauseScreen() { return false; }
