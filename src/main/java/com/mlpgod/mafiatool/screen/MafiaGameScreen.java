@@ -134,19 +134,24 @@ public final class MafiaGameScreen extends Screen {
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, width, height, 0xA0101010);
-        g.drawCenteredString(font, game.title + (game.status == GameStatus.FINISHED ? " · архив" : " · " + game.phase), width / 2, 16, 0xFFFFFF);
-        g.drawCenteredString(font, "Живы " + game.aliveCount() + " / " + game.players.size(), width / 2, 34, 0xA0A0A0);
         int left = 14;
         int panelW = Math.min(470, width / 2 + 20);
-        g.drawString(font, "Участник · роль · статус", left, 55, 0xFFFFFF);
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
-        g.drawString(font, "История действий · " + game.events.size(), rightX, 55, 0xFFFFFF);
+        int panelBottom = Math.max(90, height - 82);
+        // Give the action log a dedicated, readable surface over the world background.
+        g.fill(rightX - 8, 44, width - 14, panelBottom, 0xC0181818);
+        g.drawCenteredString(font, game.title + (game.status == GameStatus.FINISHED ? " · архив" : " · " + game.phase), width / 2, 16, 0xFFFFFF);
+        g.drawCenteredString(font, "Живы " + game.aliveCount() + " / " + game.players.size(), width / 2, 34, 0xA0A0A0);
+        g.drawString(font, "Участник · роль · статус", left, 55, 0xFFFFFF);
+        // Draw widgets first; the log is painted afterwards so other screen layers cannot hide it.
+        super.render(g, mouseX, mouseY, delta);
+        g.drawString(font, "История действий · " + game.events.size(), rightX, 55, 0xFFFFFFFF);
         int visibleEvents = visibleEvents();
         int start = Math.max(0, Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents)));
         int rightPadding = game.status == GameStatus.FINISHED
                 ? (game.events.size() > visibleEvents ? 52 : 24) : 104;
         int eventTextWidth = Math.max(40, width - rightX - rightPadding);
-        if (game.events.isEmpty()) g.drawString(font, "Событий пока нет", rightX, 80, 0x909090);
+        if (game.events.isEmpty()) g.drawString(font, "Событий пока нет", rightX, 80, 0xFFC0C0C0);
         for (int i = start; i < game.events.size() && i < start + visibleEvents; i++) {
             GameEvent event = game.events.get(i);
             int y = 77 + (i - start) * 32;
@@ -154,11 +159,10 @@ public final class MafiaGameScreen extends Screen {
             String first = TIME.format(Instant.ofEpochMilli(event.timestamp)) + " · " + event.phase + " · " + event.actorLabel + target;
             String second = event.description == null ? "" : event.description;
             if (event.result != null && !event.result.isBlank()) second += " · " + event.result;
-            g.drawString(font, clip(first, eventTextWidth), rightX, y, 0xD0D0D0);
-            if (!second.isBlank()) g.drawString(font, clip(second, eventTextWidth), rightX, y + 12, 0x909090);
+            g.drawString(font, clip(first, eventTextWidth), rightX, y, 0xFFFFFFFF);
+            if (!second.isBlank()) g.drawString(font, clip(second, eventTextWidth), rightX, y + 12, 0xFFE0E0E0);
         }
-        if (!message.isBlank()) g.drawString(font, message, rightX, height - 78, 0xFFFFFF);
-        super.render(g, mouseX, mouseY, delta);
+        if (!message.isBlank()) g.drawString(font, message, rightX, height - 78, 0xFFFFFFFF);
     }
 
     private String clip(String value, int width) {
