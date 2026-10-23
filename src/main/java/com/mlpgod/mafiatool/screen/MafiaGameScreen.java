@@ -35,7 +35,7 @@ public final class MafiaGameScreen extends Screen {
         for (int i = playerScroll; i < game.players.size() && i < playerScroll + rows; i++) {
             GamePlayer player = game.players.get(i);
             int y = 74 + (i - playerScroll) * 26;
-            int nameW = Math.max(100, panelW - (editable ? 174 : 24));
+            int nameW = Math.max(100, panelW - (editable ? 222 : 58));
             ChatFormatting nameColor = switch (player.status) {
                 case ALIVE -> ChatFormatting.GREEN;
                 case DEAD -> ChatFormatting.DARK_GRAY;
@@ -52,6 +52,9 @@ public final class MafiaGameScreen extends Screen {
             addRenderableWidget(Button.builder(rowLabel, b -> {})
                     .bounds(left, y, nameW, 22).build());
             int controlsX = left + nameW + 4;
+            addRenderableWidget(Button.builder(Component.literal("Лог"), b ->
+                            Minecraft.getInstance().setScreen(new EventLogScreen(game, player.id, this)))
+                    .bounds(editable ? controlsX + 170 : controlsX, y, editable ? 44 : 54, 22).build());
             if (editable) {
                 addRenderableWidget(Button.builder(Component.literal(statusLabel(player.status)), b -> Minecraft.getInstance().setScreen(new PlayerStatusScreen(game, player)))
                         .bounds(controlsX, y, 70, 22).build());
@@ -63,6 +66,9 @@ public final class MafiaGameScreen extends Screen {
         }
 
         int rightX = Math.max(width / 2 + 14, left + panelW + 12);
+        addRenderableWidget(Button.builder(Component.literal("Полный журнал"), b ->
+                        Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
+                .bounds(rightX, 48, 110, 22).build());
         int actionY = height - 54;
         int visibleEvents = visibleEvents();
         eventScroll = Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents));
