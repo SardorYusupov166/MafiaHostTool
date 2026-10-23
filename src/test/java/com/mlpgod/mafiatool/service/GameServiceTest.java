@@ -263,6 +263,25 @@ class GameServiceTest {
     }
 
     @Test
+    void eventFiltersCanNarrowTheJournalByPlayerPhaseAndType() {
+        GameService service = service(temp);
+        GameRecord game = preparedFourPlayerGame(service);
+        service.startGame(game, PhaseKind.NIGHT);
+        GamePlayer actor = game.players.get(0);
+        GamePlayer target = game.players.get(1);
+        service.recordAction(game, EventType.KILL_ATTEMPT, actor.id, target.id,
+                "Ночная атака", "Цель спасена");
+        service.advancePhase(game);
+        service.recordAction(game, EventType.CHECK, actor.id, game.players.get(2).id,
+                "Проверка", "Результат проверки");
+
+        List<GameEvent> filtered = service.filterEvents(game, PhaseKind.NIGHT, target.id, EventType.KILL_ATTEMPT);
+        assertEquals(1, filtered.size());
+        assertEquals("Ночная атака", filtered.getFirst().description);
+        assertTrue(service.filterEvents(game, PhaseKind.DAY, target.id, EventType.KILL_ATTEMPT).isEmpty());
+    }
+
+    @Test
     void finishedGameCannotBeChangedUntilRestored() {
         GameService service = service(temp);
         GameRecord game = preparedFourPlayerGame(service);
