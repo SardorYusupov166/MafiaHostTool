@@ -29,7 +29,7 @@ final class AiAssistantSettingsScreen extends Screen {
         endpoint = field(x, y + 28, w, "Адрес API", config.endpoint, 500);
         model = field(x, y + 76, w, "Модель", config.model, 120);
         apiKey = field(x, y + 124, w, "API-ключ", config.apiKey, 500);
-        apiKey.setSuggestion(Component.literal("Ключ хранится локально в config/mafiatool/ai-assistant.json"));
+        apiKey.setSuggestion("Ключ хранится локально в config/mafiatool/ai-assistant.json");
         addRenderableWidget(Button.builder(Component.literal("Сохранить"), b -> save())
                 .bounds(x + w - 174, y + 168, 82, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Назад"), b -> Minecraft.getInstance().setScreen(returnTo))
@@ -70,3 +70,4 @@ final class AiAssistantSettingsScreen extends Screen {
         super.render(g, mouseX, mouseY, delta);
     }
 }
+
