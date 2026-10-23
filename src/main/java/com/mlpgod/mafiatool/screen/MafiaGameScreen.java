@@ -2,6 +2,7 @@ package com.mlpgod.mafiatool.screen;
 
 import com.mlpgod.mafiatool.model.*;
 import com.mlpgod.mafiatool.service.GameService;
+import com.mlpgod.mafiatool.assistant.AiChatMonitor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -45,8 +46,14 @@ public final class MafiaGameScreen extends Screen {
         int w = panelWidth();
         boolean editable = game.status != GameStatus.FINISHED;
 
-        addRenderableWidget(Button.builder(Component.literal("×"), b -> Minecraft.getInstance().setScreen(null))
+        addRenderableWidget(Button.builder(Component.literal("×"), b -> {
+                    AiChatMonitor.stop();
+                    Minecraft.getInstance().setScreen(null);
+                })
                 .bounds(x + w - 32, y + 10, 22, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("ИИ"), b ->
+                        Minecraft.getInstance().setScreen(new AiAssistantScreen(game, this)))
+                .bounds(x + w - 78, y + 10, 38, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Игроки"), b -> { playersTab = true; playerScroll = 0; rebuildWidgets(); })
                 .bounds(x + 12, y + 48, 92, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Журнал"), b -> { playersTab = false; eventScroll = Integer.MAX_VALUE; rebuildWidgets(); })
@@ -129,8 +136,18 @@ public final class MafiaGameScreen extends Screen {
                     .bounds(x + 404, footer, 100, 22).build());
         }
         addRenderableWidget(Button.builder(Component.literal("К списку партий"), b ->
-                        Minecraft.getInstance().setScreen(new MafiaGamesScreen()))
+                        leaveGameScreen())
                 .bounds(x + 12, panelY() + panelHeight() - 34, 132, 22).build());
+    }
+
+    private void leaveGameScreen() {
+        AiChatMonitor.stop();
+        Minecraft.getInstance().setScreen(new MafiaGamesScreen());
+    }
+
+    @Override public void onClose() {
+        AiChatMonitor.stop();
+        super.onClose();
     }
 
     private void openChat() {
@@ -172,6 +189,8 @@ public final class MafiaGameScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
+        String aiSuggestion = AiChatMonitor.pollSuggestion(game);
+        if (aiSuggestion != null) message = aiSuggestion;
         int x = panelX();
         int y = panelY();
         int w = panelWidth();
@@ -184,7 +203,7 @@ public final class MafiaGameScreen extends Screen {
         g.fill(x + 8, footerTop() - 6, x + w - 8, y + h - 8, 0xC0181E28);
 
         String title = game.title + (game.status == GameStatus.FINISHED ? " · архив" : "");
-        g.drawString(font, clip(title, w - 70), x + 12, y + 16, 0xFFFFFFFF);
+        g.drawString(font, clip(title, w - 118), x + 12, y + 16, 0xFFFFFFFF);
         g.drawString(font, game.status == GameStatus.FINISHED ? "Завершена" : game.phase.toString(), x + 12, y + 28, 0xFFB5C4D6);
         g.drawString(font, "Живы " + game.aliveCount() + " / " + game.players.size(), x + 142, y + 28, 0xFF9CCC8A);
         if (playersTab) {
