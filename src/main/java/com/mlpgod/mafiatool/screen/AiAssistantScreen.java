@@ -1,6 +1,7 @@
 package com.mlpgod.mafiatool.screen;
 
 import com.mlpgod.mafiatool.assistant.AiAssistantConfig;
+import com.mlpgod.mafiatool.assistant.AiChatMonitor;
 import com.mlpgod.mafiatool.assistant.AiAssistantService;
 import com.mlpgod.mafiatool.model.GameRecord;
 import net.minecraft.client.Minecraft;
@@ -21,6 +22,7 @@ public final class AiAssistantScreen extends Screen {
     private final List<String> transcript = new ArrayList<>();
     private EditBox prompt;
     private Button sendButton;
+    private Button monitorButton;
     private String status = "Подсказки ИИ не меняют данные партии.";
     private boolean busy;
     private int scroll;
@@ -35,7 +37,7 @@ public final class AiAssistantScreen extends Screen {
     private int panelHeight() { return Math.min(560, height - 32); }
     private int panelX() { return width - panelWidth() - 16; }
     private int panelY() { return 16; }
-    private int messageTop() { return panelY() + 78; }
+    private int messageTop() { return panelY() + 122; }
     private int messageBottom() { return panelY() + panelHeight() - 112; }
 
     @Override protected void init() {
@@ -43,6 +45,11 @@ public final class AiAssistantScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Настройки ИИ"), b ->
                         Minecraft.getInstance().setScreen(new AiAssistantSettingsScreen(this)))
                 .bounds(x + w - 164, y + 10, 112, 20).build());
+        monitorButton = Button.builder(Component.literal(monitorLabel()), b -> {
+                    status = AiChatMonitor.toggle(game);
+                    monitorButton.setMessage(Component.literal(monitorLabel()));
+                }).bounds(x + 12, y + 72, 190, 20).build();
+        addRenderableWidget(monitorButton);
         addRenderableWidget(Button.builder(Component.literal("×"), b -> closeToParent())
                 .bounds(x + w - 38, y + 10, 24, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Назад"), b -> closeToParent())
@@ -126,6 +133,15 @@ public final class AiAssistantScreen extends Screen {
         g.drawString(font, "ИИ-помощник · " + clip(game.title, w - 210), x + 12, y + 16, 0xFFFFFFFF);
         g.drawString(font, "Запрос уйдёт выбранному провайдеру; возможна плата за API.", x + 12, y + 43, 0xFFB5C4D6);
         g.drawString(font, "Ники, статусы и журнал отправляются; роли скрыты.", x + 12, y + 56, 0xFF9CCC8A);
+        g.drawString(font, "Недавний чат уйдёт провайдеру только при включённом наблюдении.", x + 12, y + 98, 0xFFFFD080);
+
+        String suggestion;
+        while ((suggestion = AiChatMonitor.pollSuggestion(game)) != null) {
+            transcript.add("Наблюдатель: " + suggestion);
+            trimTranscript();
+            status = "Новая подсказка по игровому чату.";
+            scroll = 0;
+        }
 
         int lineHeight = 11;
         int textWidth = w - 36;
@@ -152,6 +168,10 @@ public final class AiAssistantScreen extends Screen {
     private String clip(String value, int pixelWidth) {
         int max = Math.max(8, pixelWidth / 6);
         return value.length() > max ? value.substring(0, max - 1) + "…" : value;
+    }
+
+    private String monitorLabel() {
+        return AiChatMonitor.isEnabledFor(game) ? "Наблюдение за чатом: ВКЛ" : "Наблюдение за чатом: ВЫКЛ";
     }
 
     @Override public boolean isPauseScreen() { return false; }
