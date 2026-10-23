@@ -29,13 +29,14 @@ public final class MafiaGameScreen extends Screen {
     @Override protected void init() {
         boolean editable = game.status != GameStatus.FINISHED;
         int left = 14;
-        int panelW = Math.min(470, width / 2 + 20);
+        int panelW = playerPanelWidth();
         int rows = Math.max(1, Math.min(12, (height - 182) / 26));
         playerScroll = Math.min(playerScroll, Math.max(0, game.players.size() - rows));
         for (int i = playerScroll; i < game.players.size() && i < playerScroll + rows; i++) {
             GamePlayer player = game.players.get(i);
             int y = 74 + (i - playerScroll) * 26;
-            int nameW = Math.max(100, panelW - (editable ? 222 : 58));
+            int controlsWidth = editable ? 214 : 54;
+            int nameW = Math.max(1, panelW - 12 - controlsWidth);
             ChatFormatting nameColor = switch (player.status) {
                 case ALIVE -> ChatFormatting.GREEN;
                 case DEAD -> ChatFormatting.DARK_GRAY;
@@ -65,7 +66,7 @@ public final class MafiaGameScreen extends Screen {
             }
         }
 
-        int rightX = Math.max(width / 2 + 14, left + panelW + 12);
+        int rightX = logPanelX();
         addRenderableWidget(Button.builder(Component.literal("Полный журнал"), b ->
                         Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
                 .bounds(rightX, 48, 110, 22).build());
@@ -125,10 +126,12 @@ public final class MafiaGameScreen extends Screen {
         return Math.max(1, (height - 162) / 32);
     }
 
+    private int playerPanelWidth() { return Math.min(470, width / 2 + 20); }
+
+    private int logPanelX() { return Math.max(width / 2 + 14, 14 + playerPanelWidth() + 16); }
+
     @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int left = 14;
-        int panelW = Math.min(470, width / 2 + 20);
-        int rightX = Math.max(width / 2 + 14, left + panelW + 12);
+        int rightX = logPanelX();
         if (mouseX >= rightX && game.events.size() > visibleEvents()) {
             int maximum = Math.max(0, game.events.size() - visibleEvents());
             eventScroll = Math.max(0, Math.min(maximum, eventScroll - (int) Math.signum(verticalAmount)));
@@ -141,8 +144,7 @@ public final class MafiaGameScreen extends Screen {
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float delta) {
         g.fill(0, 0, width, height, 0xA0101010);
         int left = 14;
-        int panelW = Math.min(470, width / 2 + 20);
-        int rightX = Math.max(width / 2 + 14, left + panelW + 12);
+        int rightX = logPanelX();
         int panelBottom = Math.max(90, height - 82);
         // Give the action log a dedicated, readable surface over the world background.
         g.fill(rightX - 8, 44, width - 14, panelBottom, 0xC0181818);
