@@ -47,6 +47,9 @@ public final class MafiaGameScreen extends Screen {
 
         addRenderableWidget(Button.builder(Component.literal("×"), b -> Minecraft.getInstance().setScreen(null))
                 .bounds(x + w - 32, y + 10, 22, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("ИИ"), b ->
+                        Minecraft.getInstance().setScreen(new AiAssistantScreen(game, this)))
+                .bounds(x + w - 78, y + 10, 38, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Игроки"), b -> { playersTab = true; playerScroll = 0; rebuildWidgets(); })
                 .bounds(x + 12, y + 48, 92, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Журнал"), b -> { playersTab = false; eventScroll = Integer.MAX_VALUE; rebuildWidgets(); })
@@ -184,7 +187,7 @@ public final class MafiaGameScreen extends Screen {
         g.fill(x + 8, footerTop() - 6, x + w - 8, y + h - 8, 0xC0181E28);
 
         String title = game.title + (game.status == GameStatus.FINISHED ? " · архив" : "");
-        g.drawString(font, clip(title, w - 70), x + 12, y + 16, 0xFFFFFFFF);
+        g.drawString(font, clip(title, w - 118), x + 12, y + 16, 0xFFFFFFFF);
         g.drawString(font, game.status == GameStatus.FINISHED ? "Завершена" : game.phase.toString(), x + 12, y + 28, 0xFFB5C4D6);
         g.drawString(font, "Живы " + game.aliveCount() + " / " + game.players.size(), x + 142, y + 28, 0xFF9CCC8A);
         if (playersTab) {
