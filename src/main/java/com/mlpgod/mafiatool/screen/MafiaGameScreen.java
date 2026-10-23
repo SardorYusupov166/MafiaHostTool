@@ -69,7 +69,7 @@ public final class MafiaGameScreen extends Screen {
         int rightX = logPanelX();
         addRenderableWidget(Button.builder(Component.literal("Полный журнал"), b ->
                         Minecraft.getInstance().setScreen(new EventLogScreen(game, null, this)))
-                .bounds(rightX, 48, 110, 22).build());
+                .bounds(width - 126, 48, 110, 22).build());
         int actionY = height - 54;
         int visibleEvents = visibleEvents();
         eventScroll = Math.min(eventScroll, Math.max(0, game.events.size() - visibleEvents));
