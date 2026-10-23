@@ -41,10 +41,11 @@ class AiAssistantServiceTest {
 
         String context = AiAssistantService.systemPrompt(game);
 
-        assertFalse(context.contains("Событие 0"));
-        assertFalse(context.contains("Событие 1"));
-        assertTrue(context.contains("Событие 2"));
-        assertTrue(context.contains("Событие 81"));
+        assertFalse(context.contains("· Событие 0\n"));
+        assertFalse(context.contains("· Событие 1\n"));
+        assertTrue(context.contains("· Событие 2\n"));
+        assertTrue(context.contains("· Событие 81\n"));
         assertTrue(context.contains("Показаны только последние 80 событий"));
     }
 }
+
