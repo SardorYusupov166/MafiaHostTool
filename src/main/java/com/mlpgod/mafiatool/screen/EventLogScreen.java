@@ -26,8 +26,14 @@ public final class EventLogScreen extends Screen {
         super(Component.literal("Журнал партии")); this.game = game; this.playerId = playerId; this.returnTo = returnTo;
     }
 
+    private int panelWidth() { return Math.min(520, width - 32); }
+    private int panelX() { return width - panelWidth() - 16; }
+    private int panelY() { return 16; }
+    private int visibleRows() { return Math.max(1, (height - 142) / 34); }
+
     @Override protected void init() {
-        int left = 14;
+        int left = panelX() + 12;
+        int panelRight = panelX() + panelWidth();
         addRenderableWidget(Button.builder(Component.literal("Фаза: " + phaseLabel()), b -> {
             PhaseKind[] phases = {null, PhaseKind.NIGHT, PhaseKind.DAY, PhaseKind.PREPARATION, PhaseKind.FINISHED};
             int next = phase == null ? 1 : (java.util.Arrays.asList(phases).indexOf(phase) + 1) % phases.length;
@@ -52,14 +58,14 @@ public final class EventLogScreen extends Screen {
             GameEvent event = events.get(i); int y = 82 + (i - scroll) * 34;
             if (game.status != GameStatus.FINISHED) {
                 addRenderableWidget(Button.builder(Component.literal("Исправить"), b -> Minecraft.getInstance().setScreen(new EventCorrectionScreen(game, event, this)))
-                        .bounds(width - 88, y, 74, 24).build());
+                        .bounds(panelRight - 88, y, 74, 24).build());
             }
         }
         addRenderableWidget(Button.builder(Component.literal("Назад"), b -> Minecraft.getInstance().setScreen(returnTo))
-                .bounds(width - 88, height - 32, 70, 22).build());
+                .bounds(panelRight - 82, height - 32, 70, 22).build());
         if (events.size() > visible) {
-            addRenderableWidget(Button.builder(Component.literal("▲"), b -> { scroll = Math.max(0, scroll - 1); rebuildWidgets(); }).bounds(width - 42, 78, 22, 20).build());
-            addRenderableWidget(Button.builder(Component.literal("▼"), b -> { scroll = Math.min(events.size() - visible, scroll + 1); rebuildWidgets(); }).bounds(width - 42, height - 60, 22, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("▲"), b -> { scroll = Math.max(0, scroll - 1); rebuildWidgets(); }).bounds(panelRight - 34, 78, 22, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("▼"), b -> { scroll = Math.min(events.size() - visible, scroll + 1); rebuildWidgets(); }).bounds(panelRight - 34, height - 60, 22, 20).build());
         }
     }
 
@@ -94,20 +100,36 @@ public final class EventLogScreen extends Screen {
     };
     }
 
-    @Override public void render(GuiGraphics g, int x, int y, float d) {
-        g.fill(0, 0, width, height, 0xA0101010);
-        g.drawCenteredString(font, "Журнал · " + game.title, width / 2, 18, 0xFFFFFF);
+    @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        int visible = Math.max(1, (height - 140) / 34);
         List<GameEvent> events = filtered();
-        if (events.isEmpty()) g.drawCenteredString(font, "Нет событий по выбранным фильтрам", width / 2, height / 2, 0xA0A0A0);
-        for (int i = scroll; i < events.size() && i < scroll + Math.max(1, (height - 140) / 34); i++) {
+        int maxScroll = Math.max(0, events.size() - visible);
+        if (mouseX >= panelX() && mouseY >= 78 && mouseY < height - 48 && maxScroll > 0) {
+            scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.signum(verticalAmount)));
+            rebuildWidgets();
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override public void render(GuiGraphics g, int x, int y, float d) {
+        int panelX = panelX();
+        int panelY = panelY();
+        int panelRight = panelX + panelWidth();
+        g.fill(panelX, panelY, panelRight, height - 16, 0xE010141C);
+        g.fill(panelX, panelY, panelRight, panelY + 2, 0xFF586D85);
+        g.drawCenteredString(font, "Журнал · " + game.title, panelX + panelWidth() / 2, 18, 0xFFFFFF);
+        List<GameEvent> events = filtered();
+        if (events.isEmpty()) g.drawCenteredString(font, "Нет событий по выбранным фильтрам", panelX + panelWidth() / 2, height / 2, 0xA0A0A0);
+        for (int i = scroll; i < events.size() && i < scroll + visibleRows(); i++) {
             GameEvent e = events.get(i); int row = i - scroll; int yy = 86 + row * 34;
             String first = TIME.format(Instant.ofEpochMilli(e.timestamp)) + " · " + e.phase + " · " + typeLabelFor(e.type) + " · " + e.actorLabel
                     + (e.targetLabel == null || e.targetLabel.isBlank() ? "" : " → " + e.targetLabel) + " · " + e.description;
-            g.drawString(font, clip(first, width - 130), 16, yy, 0xE0E0E0);
+            g.drawString(font, clip(first, panelWidth() - 116), panelX + 12, yy, 0xE0E0E0);
             String second = e.result == null || e.result.isBlank() ? "" : "Результат: " + e.result;
             if (e.originalEventId != null) second += " · Исправление исходной записи";
             if (e.correctionNote != null && !e.correctionNote.isBlank()) second += " · Причина: " + e.correctionNote;
-            if (!second.isBlank()) g.drawString(font, clip(second, width - 130), 28, yy + 12, 0xA0A0A0);
+            if (!second.isBlank()) g.drawString(font, clip(second, panelWidth() - 116), panelX + 12, yy + 12, 0xA0A0A0);
         }
         super.render(g, x, y, d);
     }
