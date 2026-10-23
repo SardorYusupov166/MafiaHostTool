@@ -34,9 +34,10 @@ public final class EventEntryScreen extends Screen {
     }
 
     @Override protected void init() {
-        int left = width / 2 - 340;
+        int panelWidth = Math.min(520, width - 32);
+        int left = width - panelWidth - 16;
         int listY = 80;
-        int columnWidth = 330;
+        int columnWidth = (panelWidth - 36) / 2;
         int rows = visibleRows();
         int shownActorRows = Math.min(rows, Math.max(1, active.size()));
         actorScroll = Math.max(0, Math.min(actorScroll, Math.max(0, active.size() - rows)));
@@ -48,12 +49,12 @@ public final class EventEntryScreen extends Screen {
                 actorIndex = option;
                 for (int i = 0; i < actorButtons.size(); i++)
                     actorButtons.get(i).setMessage(Component.literal(actorOptionLabel(actorScroll + i)));
-            }).bounds(left, listY + row * 24, 340, 22).build();
+            }).bounds(left + 12, listY + row * 24, columnWidth, 22).build();
             addRenderableWidget(button);
             actorButtons.add(button);
         }
         if (active.isEmpty()) addRenderableWidget(Button.builder(Component.literal("Нет живых игроков"), b -> {})
-                .bounds(left, listY, columnWidth, 22).build());
+                .bounds(left + 12, listY, columnWidth, 22).build());
 
         List<Button> targetButtons = new ArrayList<>();
         int shownTargetRows = Math.min(rows, active.size() + 1);
@@ -63,7 +64,7 @@ public final class EventEntryScreen extends Screen {
                 targetIndex = option == 0 ? -1 : option - 1;
                 for (int i = 0; i < targetButtons.size(); i++)
                     targetButtons.get(i).setMessage(Component.literal(targetOptionLabel(targetScroll + i)));
-            }).bounds(left + columnWidth + 20, listY + row * 24, columnWidth, 22).build();
+            }).bounds(left + 24 + columnWidth, listY + row * 24, columnWidth, 22).build();
             addRenderableWidget(button);
             targetButtons.add(button);
         }
@@ -72,11 +73,11 @@ public final class EventEntryScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Тип действия: " + typeLabel()), b -> {
             typeIndex = (typeIndex + 1) % actionTypes().length;
             b.setMessage(Component.literal("Тип действия: " + typeLabel()));
-        }).bounds(left, controlsY, columnWidth, 22).build());
-        description = edit(left, controlsY + 30, 680, "Описание действия", 200);
-        result = edit(left, controlsY + 58, 680, "Результат: успешно / сорвано / спасён", 200);
-        addRenderableWidget(Button.builder(Component.literal("Записать в журнал"), b -> save()).bounds(left, controlsY + 90, 160, 22).build());
-        addRenderableWidget(Button.builder(Component.literal("Отмена"), b -> Minecraft.getInstance().setScreen(returnTo)).bounds(left + 168, controlsY + 90, 86, 22).build());
+        }).bounds(left + 12, controlsY, columnWidth, 22).build());
+        description = edit(left + 12, controlsY + 30, panelWidth - 24, "Описание действия", 200);
+        result = edit(left + 12, controlsY + 58, panelWidth - 24, "Результат: успешно / сорвано / спасён", 200);
+        addRenderableWidget(Button.builder(Component.literal("Записать в журнал"), b -> save()).bounds(left + 12, controlsY + 90, 160, 22).build());
+        addRenderableWidget(Button.builder(Component.literal("Отмена"), b -> Minecraft.getInstance().setScreen(returnTo)).bounds(left + 180, controlsY + 90, 86, 22).build());
     }
 
     private EditBox edit(int x, int y, int w, String hint, int max) {
@@ -113,17 +114,19 @@ public final class EventEntryScreen extends Screen {
     }
 
     @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        int left = width / 2 - 340;
+        int panelWidth = Math.min(520, width - 32);
+        int left = width - panelWidth - 16;
+        int columnWidth = (panelWidth - 36) / 2;
         int rows = visibleRows();
         int listBottom = 80 + rows * 24;
         int maxActorScroll = Math.max(0, active.size() - rows);
         int maxTargetScroll = Math.max(0, active.size() + 1 - rows);
-        if (mouseY >= 80 && mouseY < listBottom && mouseX >= left && mouseX < left + 330 && maxActorScroll > 0) {
+        if (mouseY >= 80 && mouseY < listBottom && mouseX >= left + 12 && mouseX < left + 12 + columnWidth && maxActorScroll > 0) {
             actorScroll = Math.max(0, Math.min(maxActorScroll, actorScroll - (int) Math.signum(verticalAmount)));
             rebuildList(description, result);
             return true;
         }
-        if (mouseY >= 80 && mouseY < listBottom && mouseX >= left + 350 && mouseX < left + 680 && maxTargetScroll > 0) {
+        if (mouseY >= 80 && mouseY < listBottom && mouseX >= left + 24 + columnWidth && mouseX < left + 24 + 2 * columnWidth && maxTargetScroll > 0) {
             targetScroll = Math.max(0, Math.min(maxTargetScroll, targetScroll - (int) Math.signum(verticalAmount)));
             rebuildList(description, result);
             return true;
@@ -140,16 +143,18 @@ public final class EventEntryScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g, int x, int y, float d) {
-        g.fill(0, 0, width, height, 0xA0101010);
-        g.drawCenteredString(font, "Действие · " + game.phase, width / 2, 24, 0xFFFFFF);
-        g.drawCenteredString(font, "Запись действия не меняет автоматически статус цели", width / 2, 45, 0xA0A0A0);
-        int left = width / 2 - 340;
-        g.drawString(font, "Кто выполнил действие?", left, 62, 0xFFFFFF);
-        g.drawString(font, "Цель действия", left + 350, 62, 0xFFFFFF);
+        int panelWidth = Math.min(520, width - 32);
+        int left = width - panelWidth - 16;
+        int columnWidth = (panelWidth - 36) / 2;
+        g.fill(left, 16, left + panelWidth, height - 16, 0xE010141C);
+        g.fill(left, 16, left + panelWidth, 18, 0xFF586D85);
+        g.drawString(font, "Записать действие · " + game.phase, left + 12, 28, 0xFFFFFFFF);
+        g.drawString(font, "Кто выполнил действие?", left + 12, 62, 0xFFFFFF);
+        g.drawString(font, "Цель действия", left + 24 + columnWidth, 62, 0xFFFFFF);
         if (active.size() + 1 > visibleRows()) {
-            g.drawString(font, "Колёсико прокручивает список под курсором", left, 64, 0x909090);
+            g.drawString(font, "Колёсико прокручивает список под курсором", left + 12, 76, 0x909090);
         }
-        if (!error.isBlank()) g.drawCenteredString(font, error, width / 2, height - 28, 0xFF8888);
+        if (!error.isBlank()) g.drawString(font, error, left + 12, height - 28, 0xFFFF8888);
         super.render(g, x, y, d);
     }
     @Override public boolean isPauseScreen() { return false; }
