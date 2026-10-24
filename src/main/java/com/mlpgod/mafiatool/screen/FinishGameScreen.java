@@ -2,6 +2,7 @@ package com.mlpgod.mafiatool.screen;
 
 import com.mlpgod.mafiatool.model.GameRecord;
 import com.mlpgod.mafiatool.service.GameService;
+import com.mlpgod.mafiatool.overlay.MafiaOverlayManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -35,6 +36,7 @@ public final class FinishGameScreen extends Screen {
             if (yes) {
                 try {
                     GameService.get().finishGame(game, winner.getValue(), comment.getValue());
+                    MafiaOverlayManager.onGameRemoved(game);
                     Minecraft.getInstance().setScreen(new MafiaGamesScreen());
                     return;
                 } catch (Exception e) { error = e.getMessage(); }

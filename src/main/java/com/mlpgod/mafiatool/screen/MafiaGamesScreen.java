@@ -3,6 +3,7 @@ package com.mlpgod.mafiatool.screen;
 import com.mlpgod.mafiatool.model.GameRecord;
 import com.mlpgod.mafiatool.model.GameStatus;
 import com.mlpgod.mafiatool.service.GameService;
+import com.mlpgod.mafiatool.overlay.MafiaOverlayManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -90,7 +91,7 @@ public final class MafiaGamesScreen extends Screen {
     private void confirmDelete(GameRecord game) {
         Minecraft.getInstance().setScreen(new ConfirmScreen(yes -> {
             if (yes) {
-                try { SERVICE.deleteGame(game); message = "Партия удалена"; }
+                try { SERVICE.deleteGame(game); MafiaOverlayManager.onGameRemoved(game); message = "Партия удалена"; }
                 catch (Exception e) { message = e.getMessage(); }
             }
             Minecraft.getInstance().setScreen(this);

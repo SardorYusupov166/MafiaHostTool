@@ -2,6 +2,8 @@ package com.mlpgod.mafiatool.screen;
 
 import com.mlpgod.mafiatool.model.*;
 import com.mlpgod.mafiatool.service.GameService;
+import com.mlpgod.mafiatool.overlay.MafiaOverlayManager;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -26,13 +28,19 @@ public final class MafiaGameScreen extends Screen {
     private int playerScroll;
     private int eventScroll = Integer.MAX_VALUE;
     private String message = "";
+    private boolean moving;
+    private boolean resizing;
 
-    public MafiaGameScreen(GameRecord game) { super(Component.literal(game.title)); this.game = game; }
+    public MafiaGameScreen(GameRecord game) {
+        super(Component.literal(game.title));
+        this.game = game;
+        MafiaOverlayManager.show(game);
+    }
 
-    private int panelWidth() { return Math.min(520, width - 32); }
-    private int panelHeight() { return Math.min(700, height - 32); }
-    private int panelX() { return width - panelWidth() - 16; }
-    private int panelY() { return 16; }
+    private int panelWidth() { return MafiaOverlayManager.panelWidth(width); }
+    private int panelHeight() { return MafiaOverlayManager.isCollapsed() ? 40 : MafiaOverlayManager.panelHeight(height); }
+    private int panelX() { return MafiaOverlayManager.panelX(width); }
+    private int panelY() { return MafiaOverlayManager.panelY(height); }
     private int contentTop() { return panelY() + 96; }
     private int footerTop() { return panelY() + panelHeight() - 68; }
     private int contentBottom() { return footerTop() - 8; }
@@ -45,8 +53,16 @@ public final class MafiaGameScreen extends Screen {
         int w = panelWidth();
         boolean editable = game.status != GameStatus.FINISHED;
 
-        addRenderableWidget(Button.builder(Component.literal("×"), b -> Minecraft.getInstance().setScreen(null))
-                .bounds(x + w - 32, y + 10, 22, 20).build());
+        addRenderableWidget(Button.builder(Component.literal("×"), b -> {
+            MafiaOverlayManager.hide();
+            Minecraft.getInstance().setScreen(null);
+        }).bounds(x + w - 32, y + 10, 22, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(MafiaOverlayManager.isCollapsed() ? "Развернуть" : "Свернуть"), b -> {
+            MafiaOverlayManager.setCollapsed(!MafiaOverlayManager.isCollapsed());
+            rebuildWidgets();
+        }).bounds(x + w - 126, y + 10, 88, 20).build());
+        if (MafiaOverlayManager.isCollapsed()) return;
+
         addRenderableWidget(Button.builder(Component.literal("Игроки"), b -> { playersTab = true; playerScroll = 0; rebuildWidgets(); })
                 .bounds(x + 12, y + 48, 92, 22).build());
         addRenderableWidget(Button.builder(Component.literal("Журнал"), b -> { playersTab = false; eventScroll = Integer.MAX_VALUE; rebuildWidgets(); })
@@ -113,20 +129,22 @@ public final class MafiaGameScreen extends Screen {
 
         if (editable) {
             int footer = footerTop();
+            int actionWidth = Math.max(1, (w - 24 - 16) / 5);
+            int stride = actionWidth + 4;
             addRenderableWidget(Button.builder(Component.literal("+ Действие"), b ->
                             Minecraft.getInstance().setScreen(new EventEntryScreen(game)))
-                    .bounds(x + 12, footer, 96, 22).build());
+                    .bounds(x + 12, footer, actionWidth, 22).build());
             if (game.phase.kind == PhaseKind.DAY) addRenderableWidget(Button.builder(Component.literal("Голосование"), b ->
                             Minecraft.getInstance().setScreen(new VotingScreen(game)))
-                    .bounds(x + 112, footer, 92, 22).build());
+                    .bounds(x + 12 + stride, footer, actionWidth, 22).build());
             addRenderableWidget(Button.builder(Component.literal("День / ночь"), b -> advance())
-                    .bounds(x + 208, footer, 94, 22).build());
+                    .bounds(x + 12 + stride * 2, footer, actionWidth, 22).build());
             addRenderableWidget(Button.builder(Component.literal("Правка фазы"), b ->
                             Minecraft.getInstance().setScreen(new PhaseCorrectionScreen(game, this)))
-                    .bounds(x + 306, footer, 94, 22).build());
+                    .bounds(x + 12 + stride * 3, footer, actionWidth, 22).build());
             addRenderableWidget(Button.builder(Component.literal("Завершить"), b ->
                             Minecraft.getInstance().setScreen(new FinishGameScreen(game)))
-                    .bounds(x + 404, footer, 100, 22).build());
+                    .bounds(x + 12 + stride * 4, footer, actionWidth, 22).build());
         }
         addRenderableWidget(Button.builder(Component.literal("К списку партий"), b ->
                         Minecraft.getInstance().setScreen(new MafiaGamesScreen()))
@@ -139,6 +157,11 @@ public final class MafiaGameScreen extends Screen {
     }
 
     @Override public boolean keyPressed(KeyEvent event) {
+        if (event.key() == GLFW.GLFW_KEY_M) {
+            if (event.hasShiftDown()) Minecraft.getInstance().setScreen(new MafiaGamesScreen());
+            else Minecraft.getInstance().setScreen(null);
+            return true;
+        }
         if (event.key() == GLFW.GLFW_KEY_T) {
             openChat();
             return true;
@@ -155,7 +178,49 @@ public final class MafiaGameScreen extends Screen {
         return switch (status) { case ALIVE -> "Жив"; case DEAD -> "Мёртв"; case EXCLUDED -> "Исключён"; };
     }
 
+    @Override public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            int x = panelX(), y = panelY(), w = panelWidth(), h = panelHeight();
+            if (!MafiaOverlayManager.isCollapsed() && event.x() >= x + w - 12 && event.x() <= x + w
+                    && event.y() >= y + h - 12 && event.y() <= y + h) {
+                resizing = true;
+                return true;
+            }
+            if (event.x() >= x + 8 && event.x() <= x + w - 130
+                    && event.y() >= y + 3 && event.y() < y + 36) {
+                moving = true;
+                return true;
+            }
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (moving) {
+            MafiaOverlayManager.move(panelX() + (int) Math.round(dragX), panelY() + (int) Math.round(dragY), width, height);
+            rebuildWidgets();
+            return true;
+        }
+        if (resizing) {
+            MafiaOverlayManager.resize(panelWidth() + (int) Math.round(dragX),
+                    panelHeight() + (int) Math.round(dragY), width, height);
+            rebuildWidgets();
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override public boolean mouseReleased(MouseButtonEvent event) {
+        if (moving || resizing) {
+            moving = resizing = false;
+            MafiaOverlayManager.save();
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
     @Override public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (MafiaOverlayManager.isCollapsed()) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
         if (mouseX >= panelX() && mouseX <= panelX() + panelWidth() && mouseY >= contentTop() && mouseY < contentBottom()) {
             if (playersTab && game.players.size() > visiblePlayers()) {
                 playerScroll = Math.max(0, Math.min(game.players.size() - visiblePlayers(), playerScroll - (int) Math.signum(verticalAmount)));
@@ -176,6 +241,13 @@ public final class MafiaGameScreen extends Screen {
         int y = panelY();
         int w = panelWidth();
         int h = panelHeight();
+        if (MafiaOverlayManager.isCollapsed()) {
+            g.fill(x, y, x + w, y + h, 0xE010141C);
+            g.fill(x, y, x + w, y + 2, 0xFF586D85);
+            g.drawString(font, clip(game.title + " · " + game.phase, w - 142), x + 12, y + 17, 0xFFFFFFFF);
+            super.render(g, mouseX, mouseY, delta);
+            return;
+        }
         // Leave the rest of the game view and the chat HUD unobstructed.
         g.fill(x, y, x + w, y + h, 0xE010141C);
         g.fill(x, y, x + w, y + 2, 0xFF586D85);
@@ -210,6 +282,7 @@ public final class MafiaGameScreen extends Screen {
             }
         }
         if (!message.isBlank()) g.drawString(font, clip(message, w - 24), x + 12, footerTop() - 2, 0xFFFFD080);
+        g.fill(x + w - 12, y + h - 12, x + w - 4, y + h - 4, 0xFF91A5BF);
         super.render(g, mouseX, mouseY, delta);
     }
 
