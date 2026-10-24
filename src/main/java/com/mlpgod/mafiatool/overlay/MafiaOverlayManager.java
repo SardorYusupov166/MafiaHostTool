@@ -110,8 +110,8 @@ public final class MafiaOverlayManager {
     public static void resize(int w, int h, int screenW, int screenH) {
         int availableWidth = Math.max(1, screenW - panelX(screenW) - 8);
         int availableHeight = Math.max(1, screenH - panelY(screenH) - 8);
-        SETTINGS.w = Math.max(1, Math.min(Math.max(Math.min(500, screenW - 16), w), availableWidth));
-        SETTINGS.h = Math.max(1, Math.min(Math.max(Math.min(260, screenH - 16), h), availableHeight));
+        SETTINGS.w = Math.max(1, Math.min(Math.min(760, Math.max(Math.min(500, screenW - 16), w)), availableWidth));
+        SETTINGS.h = Math.max(1, Math.min(Math.min(760, Math.max(Math.min(260, screenH - 16), h)), availableHeight));
     }
 
     public static void save() {
