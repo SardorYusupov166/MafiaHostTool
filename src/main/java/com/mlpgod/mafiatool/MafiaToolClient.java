@@ -26,8 +26,8 @@ public final class MafiaToolClient implements ClientModInitializer {
             while (openScreenKey.consumeClick()) {
                 if (client.screen != null && !(client.screen instanceof MafiaGameScreen)
                         && !(client.screen instanceof MafiaGamesScreen)) continue;
-                boolean shift = GLFW.glfwGetKey(client.getWindow().getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-                        || GLFW.glfwGetKey(client.getWindow().getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+                boolean shift = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
+                        || GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
                 if (shift) {
                     client.setScreen(new MafiaGamesScreen());
                 } else if (client.screen instanceof MafiaGameScreen || client.screen instanceof MafiaGamesScreen) {
