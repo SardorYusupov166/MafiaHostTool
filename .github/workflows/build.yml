@@ -31,7 +31,7 @@ jobs:
       - name: Upload mod jar
         uses: actions/upload-artifact@v6
         with:
-          name: MafiaHostTool-1.0.0-mc1.21.11
+          name: MafiaHostTool-1.1.0-mc1.21.11
           path: |
             build/libs/*.jar
             !build/libs/*-sources.jar
