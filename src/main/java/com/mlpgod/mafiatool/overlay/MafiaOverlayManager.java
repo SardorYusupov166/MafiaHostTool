@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +35,7 @@ public final class MafiaOverlayManager {
     private MafiaOverlayManager() {}
 
     public static void initialize() {
-        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("mafiatool", "active_game_overlay"),
+        HudElementRegistry.addLast(ResourceLocation.fromNamespaceAndPath("mafiatool", "active_game_overlay"),
                 (graphics, tickCounter) -> renderHud(graphics));
     }
 
